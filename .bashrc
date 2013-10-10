@@ -1,0 +1,6 @@
+alias gst='git status'
+alias gad='git add '
+alias gbr='git branch'
+alias gco='git checkout'
+alias gci='git commit'
+alias gdf='git diff'
