@@ -31,15 +31,23 @@ mkdir -p ~/.ssh
 printf "\n\t>> Adding rsa pub key to ~/.ssh/authorized_keys\n\n"
 echo ${rsa_pub_key} >> ~/.ssh/authorized_keys
 
-printf "\n\t>> Installing git and cloning env_config repo to ~/code/env_config\n\n"
+printf "\n\t>> Installing git\n\n"
 apt-get install git
+
 cd ~/
 mkdir -p code
 cd code
+
 if [[ ! -d /home/${user}/code/${config_repo_name} ]]; then
+    printf "\n\t>> ${config_repo_name} not yet cloned -- Cloning\n\n"
     git clone https://github.com/sheac/${config_repo_name}.git
+    cd ${config_repo_name}
+else
+    printf "\n\t>> ${config_repo_name} already cloned -- Pulling\n\n"
+    cd ${config_repo_name}
+    git checkout master
+    git pull
 fi
-cd ${config_repo_name}
 
 printf "\n\t>> Copying config files from 'env_config' git repo to their proper locations\n\n"
 cp ./.bash_profile ~/
