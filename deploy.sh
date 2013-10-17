@@ -1,11 +1,61 @@
 #!/bin/bash
 
-# copy files to their proper locations
+printf "\n\n\n\n"
+echo "This script has some problems. Please try to fix it before using"
+echo ""
+
+
+if [[ $# -eq 0 ]]; then
+    printf "Whoops! You have to supply the username of the user you're initializing here\n"
+    printf "\texample:\n"
+    printf "\t./deploy.sh <username>\n"
+    exit 1
+fi
+
+user=$1
+config_repo_name="env_config"
+rsa_pub_key="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDxZECWR/6DW5ec/7hQUJsFyVXcgmboufz/3rFcAC1K4Esf734jlZRbMvtAfy0KoPuLbPDOTk2dTTrJz/2RNGOY7iqiycvgMbIjDl9s2qvGM2qwlvEeQ/MubAJZirBrVxLH8GVvlIYyk44Bj0ELN0XhF0gzwZCk2VoPXg+zdv7emc0Xo3oanIUzO6/QXwsK+4vAEZSDe9QHuvoO4E9WMAFv6TLDWMoNfyl98wHwj8s6PRd1vl2wvpOR5u6Q/AjZ2KpXtdoWU1w8ubsCs58j4oIwbHQYqa642OLH/t1EvyUTJnQsbMt8sGm6uLWeWYUi1FK8yNftoL9/vWepYSbZQp4Z shealen@YMCs-Mac-mini-7.local"
+
+printf "\n\t>> Changing the shell to bash\n\n"
+chsh -s /bin/bash
+
+cd /
+
+printf "\n\t>> Checking if the home directory for ${user} ('/home/${user}') exists\n\n"
+if [[ ! -e /home/${user} ]]; then
+    printf "\n\t>> Home directory doesn't exist. Creating it and chowning to ${user}.\n\n"
+    mkdir /home/${user}
+    chown ${user}:${user} /home/${user}
+else
+    printf "\n\t>> Home directory exists.\n\n"
+fi
+
+printf "\n\t>> Creating the ~/.ssh folder unless it already exists\n\n"
+mkdir -p ~/.ssh
+
+printf "\n\t>> Adding rsa pub key to ~/.ssh/authorized_keys\n\n"
+echo ${rsa_pub_key} >> ~/.ssh/authorized_keys
+
+printf "\n\t>> Installing git and cloning env_config repo to ~/code/env_config\n\n"
+apt-get install git
+cd ~/
+mkdir -p code
+cd code
+if [[ ! -d /home/${user}/code/${config_repo_name} ]]; then
+    git clone https://github.com/sheac/${config_repo_name}.git
+fi
+cd ${config_repo_name}
+
+printf "\n\t>> Copying config files from 'env_config' git repo to their proper locations\n\n"
 cp ./.bashrc ~/.bashrc
 cp ./.vimrc ~/.vimrc
 
-# reload the .bashrc file
+printf "\n\t>> Reloading the .bashrc file\n\n"
 source ~/.bashrc
 
-# cleanup old files in improper locations
-# (none yet)
+printf "\n\t>> Cleaning up old files in improper locations\n\n"
+printf "\n\t>> (none yet)\n"
+
+printf "\n\t>> All finished!\n"
+printf "\n\t>> Recommend you re-log in, so the changes take effect.\n"
+printf "\n\t>> Peace\n"
