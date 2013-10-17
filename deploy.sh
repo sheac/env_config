@@ -1,10 +1,5 @@
 #!/bin/bash
 
-printf "\n\n\n\n"
-echo "This script has some problems. Please try to fix it before using"
-echo ""
-
-
 if [[ $# -eq 0 ]]; then
     printf "Whoops! You have to supply the username of the user you're initializing here\n"
     printf "\texample:\n"
@@ -47,11 +42,12 @@ fi
 cd ${config_repo_name}
 
 printf "\n\t>> Copying config files from 'env_config' git repo to their proper locations\n\n"
-cp ./.bashrc ~/.bashrc
-cp ./.vimrc ~/.vimrc
+cp ./.bash_profile ~/
+cp ./.bashrc ~/
+cp ./.vimrc ~/
 
-printf "\n\t>> Reloading the .bashrc file\n\n"
-source ~/.bashrc
+printf "\n\t>> Reloading the .bash_profile file\n\n"
+source ~/.bash_profile
 
 printf "\n\t>> Cleaning up old files in improper locations\n\n"
 printf "\n\t>> (none yet)\n"
