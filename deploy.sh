@@ -31,8 +31,9 @@ mkdir -p ~/.ssh
 printf "\n\t>> Adding rsa pub key to ~/.ssh/authorized_keys\n\n"
 echo ${rsa_pub_key} >> ~/.ssh/authorized_keys
 
-printf "\n\t>> Installing git\n\n"
+printf "\n\t>> Installing and configuring git\n\n"
 apt-get install git
+git config --global color.ui auto
 
 if [[ ! -e /home/${user}/code ]]; then
     printf "\n\t>> /home/${user}/code/ directory doesn't exist. Creating it and chowning to ${user}.\n\n"
