@@ -14,6 +14,7 @@ set ignorecase	            " ignore case in searches
 set expandtab	            " Convert tabs to spaces
 set tabstop=4	            " <TAB> four spaces
 set shiftwidth=4            " for autoindent
+set softtabstop=4           " for backspacing
 
 " indent and parentheses
 "set noautoindent            " turn offfor smartindent
@@ -36,3 +37,6 @@ set guifont=Monaco:h14
 set backup
 set backupdir=~/.vim/backup
 set directory=~/.vim/tmp
+
+" remove trailing whitespace
+autocmd FileType c,cpp,java,php,ruby,python,html,css autocmd BufWritePre <buffer> :%s/\s\+$//e

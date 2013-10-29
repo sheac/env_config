@@ -34,8 +34,13 @@ echo ${rsa_pub_key} >> ~/.ssh/authorized_keys
 printf "\n\t>> Installing git\n\n"
 apt-get install git
 
-cd ~/
-mkdir -p code
+if [[ ! -e /home/${user}/code ]]; then
+    printf "\n\t>> /home/${user}/code/ directory doesn't exist. Creating it and chowning to ${user}.\n\n"
+    mkdir /home/${user}/code
+    chown ${user}:${user} /home/${user}/code
+else
+    printf "\n\t>> /home/${user}/code/ directory exists.\n\n"
+fi
 cd code
 
 if [[ ! -d /home/${user}/code/${config_repo_name} ]]; then
@@ -53,6 +58,12 @@ printf "\n\t>> Copying config files from 'env_config' git repo to their proper l
 cp ./.bash_profile ~/
 cp ./.bashrc ~/
 cp ./.vimrc ~/
+chown ${user}:${user} ~/.*
+
+printf "\n\t>> Creating vim backup directories\n\n"
+mkdir -p ~/.vim
+mkdir -p ~/.vim/tmp
+mkdir -p ~/.vim/backup
 
 printf "\n\t>> Reloading the .bash_profile file\n\n"
 source ~/.bash_profile
