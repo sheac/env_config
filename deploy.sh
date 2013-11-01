@@ -34,6 +34,9 @@ echo ${rsa_pub_key} >> ~/.ssh/authorized_keys
 printf "\n\t>> Installing and configuring git\n\n"
 apt-get install git
 git config --global color.ui auto
+git config --global user.name "Shealen Clare"
+git config --global user.email "shealen.clare@gmail.com"
+git config --global core.editor "vim"
 
 if [[ ! -e /home/${user}/code ]]; then
     printf "\n\t>> /home/${user}/code/ directory doesn't exist. Creating it and chowning to ${user}.\n\n"
