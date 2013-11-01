@@ -59,12 +59,13 @@ printf "\n\t>> Copying config files from 'env_config' git repo to their proper l
 cp ./.bash_profile ~/
 cp ./.bashrc ~/
 cp ./.vimrc ~/
+mkdir -p ~/.vim
 chown ${user}:${user} ~/.*
 
 printf "\n\t>> Creating vim backup directories\n\n"
-mkdir -p ~/.vim
 mkdir -p ~/.vim/tmp
 mkdir -p ~/.vim/backup
+chown ${user}:${user} ~/.vim/*
 
 printf "\n\t>> Reloading the .bash_profile file\n\n"
 source ~/.bash_profile
