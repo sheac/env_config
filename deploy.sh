@@ -44,7 +44,6 @@ git config --global core.editor "vim"
 if [[ ! -e /home/${user}/code ]]; then
     printf "\n\t>> /home/${user}/code/ directory doesn't exist. Creating it and chowning to ${user}.\n\n"
     mkdir /home/${user}/code
-    chown ${user}:${user} /home/${user}/code
 else
     printf "\n\t>> /home/${user}/code/ directory exists.\n\n"
 fi
@@ -66,12 +65,13 @@ cp ./.bash_profile /home/${user}/
 cp ./.bashrc /home/${user}/
 cp ./.vimrc /home/${user}/
 mkdir -p /home/${user}/.vim
-chown ${user}:${user} /home/${user}/.*
 
 printf "\n\t>> Creating vim backup directories\n\n"
 mkdir -p /home/${user}/.vim/tmp
 mkdir -p /home/${user}/.vim/backup
-chown ${user}:${user} /home/${user}/.vim/*
+
+printf "\n\t>> Chowning everything in the home directory to ${user}"
+chown -R ${user}:${user} /home/${user}/
 
 printf "\n\t>> Reloading the .bash_profile file\n\n"
 source /home/${user}/.bash_profile
