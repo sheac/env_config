@@ -14,6 +14,9 @@ rsa_pub_key="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDxZECWR/6DW5ec/7hQUJsFyVXcgmb
 printf "\n\t>> Changing the shell to bash\n\n"
 chsh -s /bin/bash ${user}
 
+printf "\n\t>> adding user to sudoers group\n\n"
+adduser ${user} sudo
+
 cd /
 
 printf "\n\t>> Checking if the home directory for ${user} ('/home/${user}') exists\n\n"
@@ -26,10 +29,10 @@ else
 fi
 
 printf "\n\t>> Creating the ~/.ssh folder unless it already exists\n\n"
-mkdir -p ~/.ssh
+mkdir -p /home/${user}/.ssh
 
 printf "\n\t>> Adding rsa pub key to ~/.ssh/authorized_keys\n\n"
-echo ${rsa_pub_key} >> ~/.ssh/authorized_keys
+echo ${rsa_pub_key} >> /home/${user}/.ssh/authorized_keys
 
 printf "\n\t>> Installing and configuring git\n\n"
 apt-get install git
@@ -59,19 +62,19 @@ else
 fi
 
 printf "\n\t>> Copying config files from 'env_config' git repo to their proper locations\n\n"
-cp ./.bash_profile ~/
-cp ./.bashrc ~/
-cp ./.vimrc ~/
-mkdir -p ~/.vim
-chown ${user}:${user} ~/.*
+cp ./.bash_profile /home/${user}/
+cp ./.bashrc /home/${user}/
+cp ./.vimrc /home/${user}/
+mkdir -p /home/${user}/.vim
+chown ${user}:${user} /home/${user}/.*
 
 printf "\n\t>> Creating vim backup directories\n\n"
-mkdir -p ~/.vim/tmp
-mkdir -p ~/.vim/backup
-chown ${user}:${user} ~/.vim/*
+mkdir -p /home/${user}/.vim/tmp
+mkdir -p /home/${user}/.vim/backup
+chown ${user}:${user} /home/${user}/.vim/*
 
 printf "\n\t>> Reloading the .bash_profile file\n\n"
-source ~/.bash_profile
+source /home/${user}/.bash_profile
 
 printf "\n\t>> Cleaning up old files in improper locations\n\n"
 printf "\n\t>> (none yet)\n"
