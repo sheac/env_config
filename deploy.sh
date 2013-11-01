@@ -12,7 +12,7 @@ config_repo_name="env_config"
 rsa_pub_key="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDxZECWR/6DW5ec/7hQUJsFyVXcgmboufz/3rFcAC1K4Esf734jlZRbMvtAfy0KoPuLbPDOTk2dTTrJz/2RNGOY7iqiycvgMbIjDl9s2qvGM2qwlvEeQ/MubAJZirBrVxLH8GVvlIYyk44Bj0ELN0XhF0gzwZCk2VoPXg+zdv7emc0Xo3oanIUzO6/QXwsK+4vAEZSDe9QHuvoO4E9WMAFv6TLDWMoNfyl98wHwj8s6PRd1vl2wvpOR5u6Q/AjZ2KpXtdoWU1w8ubsCs58j4oIwbHQYqa642OLH/t1EvyUTJnQsbMt8sGm6uLWeWYUi1FK8yNftoL9/vWepYSbZQp4Z shealen@YMCs-Mac-mini-7.local"
 
 printf "\n\t>> Changing the shell to bash\n\n"
-chsh -s /bin/bash
+chsh -s /bin/bash ${user}
 
 cd /
 
@@ -42,7 +42,7 @@ if [[ ! -e /home/${user}/code ]]; then
 else
     printf "\n\t>> /home/${user}/code/ directory exists.\n\n"
 fi
-cd code
+cd /home/${user}/code
 
 if [[ ! -d /home/${user}/code/${config_repo_name} ]]; then
     printf "\n\t>> ${config_repo_name} not yet cloned -- Cloning\n\n"
