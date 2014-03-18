@@ -1,0 +1,25 @@
+{% load static %}
+{% load menu_items %}
+{% get_static_prefix as STATIC_PREFIX %}
+<html>
+    <link href='http://fonts.googleapis.com/css?family=Maven+Pro' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="{{ STATIC_PREFIX }}css/main.css" />
+</html>
+
+<body class="emaillist-verify-page">
+<div class='emaillist-verify-container'>
+    {% if errors %}
+        <div class="errors">
+            {% for msg in errors %}
+                <p class="error-msg">{{msg}}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    <form action="{% email_list_verify %}" method="post">
+        <div class="field-wrapper">
+            <label for="password">Password:</label>
+            <input id="password" name="password" type="text"/>
+        </div>
+        <input type="submit" value="Send" class=button"/>
+    </form>
+</body>

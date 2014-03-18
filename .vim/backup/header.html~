@@ -1,0 +1,36 @@
+{% load staticfiles %}
+{% load menu_items %}
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+    <link rel="stylesheet" type="text/css" href="{% static "css/960.css" %}" />
+    <link rel="stylesheet" type="text/css" href="{% static "css/main.css" %}" />
+    <link rel="stylesheet" type="text/css" href="{% static "css/jquery-ui-1.10.3.custom.css" %}" />
+
+    <script type="text/javascript" src="{% static "javascript/jquery-1.9.1.min.js" %}"></script>
+    <script type="text/javascript" src="{% static "javascript/jquery-ui-1.10.3.custom.min.js" %}"></script>
+</html>
+
+<body>
+
+    <div class='container_12'>
+        <div id='header'>
+            <div class='banner'>
+                <a id='logout-button' href='{% admin_logout %}'>Logout</a>
+            </div>
+            
+            <div id='menu'>
+                <table>
+                    <tr>
+                        <td><a href='{% admin_home %}'>Home</a></td>
+                        <td><a href='{% admin_users %}'>Users</a></td>
+                        <td><a href='{% admin_games %}'>Games</a></td>
+                        <td><a href='{{ "developer" | admin_permissionsgroups }}'>Developers</a></td>
+                        <td><a href='{{ "publisher" | admin_permissionsgroups }}'>Publishers</a></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class='container_12'>

@@ -1,0 +1,13 @@
+<?php echo View::factory('shared/meta') ?>
+
+<div class="thepage">
+    <div id="container">
+        <?php echo View::factory('shared/header') ?>
+        <div id=body>
+            <?php echo $content ?>
+        </div>
+        <div class="push"></div>
+    </div>
+    <?php echo View::factory('shared/footer') ?>
+</div>
+

@@ -1,0 +1,19 @@
+from ymc.model.permissionsgroups import PermissionsGroup
+
+
+"""
+    Developer model
+"""
+class Developer(PermissionsGroup):
+
+    @classmethod
+    def GetOwnInstanceFromModel(klass, model):
+        return model.developer
+
+    class Meta:
+        db_table = 'developers'
+        app_label = 'ymc'
+
+    def filter_games_query_set_by_own_id(self, games_qs):
+        return games_qs.filter(developer_id=self.id)
+

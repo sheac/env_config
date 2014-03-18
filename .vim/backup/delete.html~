@@ -1,0 +1,17 @@
+{% load static %}
+{% include "admin/header.html" %}
+{% load menu_items %}
+
+    <div class='grid_12'>
+        <h1>Delete {{group.name}}?</h1>
+    </div>
+    <form action="{{ group | admin_permissionsgroups_delete }}" method="post">{% csrf_token %}
+        <div class='clear'></div>
+        <br/>
+        <input type="submit" value="Delete {{ group_type|capfirst }}"  class='button'/>
+        <a href='{% group_type | admin_permissionsgroups %}'><input type="button" value="Cancel"  class='button'/></a>
+    </form>
+
+
+
+{% include "admin/footer.html" %}

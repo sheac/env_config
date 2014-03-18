@@ -1,0 +1,199 @@
+/* static vars */
+var OXR_APP_TOKEN  = '85686f70972a40e5acaa9c153b4d22d0';
+var APPLES_CUT = 0.3;
+var RATES_DOC_ID_BASE = 'rates_for_';
+var RATES_COLLECTION_NAME = 'exchange_rates';
+
+var CRON_STRING_SIX_HOURS = "0 0 */6 * * *",
+    CRON_STRING_MINUTELY = "0 * * * * *",
+    CRON_STRING_TEN_SECONDS = "*/10 * * * * *";
+
+var STATUS_UNINITIALIZED    = 0,
+    STATUS_INITIALIZING     = 1,
+    STATUS_INITIALIZED      = 2,
+    STATUS_ERROR            = (-1);
+
+
+
+/* global vars */
+var initStatus = STATUS_UNINITIALIZED;
+
+
+
+/* db vars */
+var db      = require('../../reporter/database').db,
+    xrc     = db.collection(RATES_COLLECTION_NAME);
+
+
+
+/* libraries */
+var fx      = require('money'),
+    oxr     = require('open-exchange-rates'),
+    moment  = require('moment'),
+    cronJob = require('cron').CronJob;
+
+
+
+
+/* initialization helpers */
+
+var saveNewRates = function(oxr, callback) {
+    console.log("Attempting to save rates to DB");
+    var doc = constructRatesDoc(oxr);
+    xrc.save(doc, function(err, doc) {
+        if (err) {
+            var errStr = "Error saving new rates to database: " + err;
+            console.error(errStr);
+            return callback(errStr);
+        }
+        console.log("Successfully saved today's rates to the DB");
+        return callback();
+    });
+};
+
+var genTodaysRatesDocId = function() {
+    return RATES_DOC_ID_BASE + moment().utc().format('MMM-DD-YYYY');
+};
+
+var constructRatesDoc = function(oxr) {
+    return {
+        _id: genTodaysRatesDocId(),
+        oxr: oxr,
+    };
+};
+
+var setTodaysRatesFromOxrObj = function(oxrInner) {
+    fx.rates = oxrInner.rates;
+    fx.base = oxrInner.base;
+    console.log("In-memory rates set");
+};
+
+var setTodaysRatesFromServer = function(callback) {
+    console.log("Attempting to obtain exchange rates from server...");
+    oxr.latest(function() {
+        console.log("Rates obtained");
+        setTodaysRatesFromOxrObj(oxr);
+        saveNewRates(oxr, callback);
+    });
+};
+
+var setTodaysRatesFromDocument = function(doc) {
+    setTodaysRatesFromOxrObj(doc.oxr);
+};
+
+var setTodaysRates = function(callback) {
+    console.log("Setting today's exchange rates");
+    var todaysDocId = genTodaysRatesDocId();
+    console.log("Searching for todays rates in DB with '_id': '"+todaysDocId+"'...");
+    xrc.findOne(
+            {_id: todaysDocId},
+            function(err, doc) {
+                if (err) {
+                    console.error("Error obtaining exhange rates from DB:\n", err, "\n");
+                    setTodaysRatesFromServer(callback);
+                } else if (!doc) {
+                    console.log("Unable to find rates in DB");
+                    setTodaysRatesFromServer(callback);
+                } else {
+                    console.log("Today's rates found in DB");
+                    setTodaysRatesFromDocument(doc);
+                    callback();
+                }
+        });
+};
+
+
+
+/* regular helpers */
+
+var convertToRevenue = function(val) {
+    return val * (1.0 - APPLES_CUT);
+}
+
+
+
+
+/* exports */
+
+var toCurrency = function(amt, oldCurrency, newCurrency) {
+    if (getStatus() != STATUS_INITIALIZED) {
+        console.error("ERROR: Attempted to use toUSD before module initialized\n");
+        return null;
+    }
+    return fx(amt).from(oldCurrency).to(newCurrency);
+}
+
+var toCurrencyRevenue = function(amt, oldCurrency, newCurrency) {
+    if (getStatus() != STATUS_INITIALIZED) {
+        console.error("ERROR: Attempted to use toUSD before module initialized\n");
+        return null;
+    }
+    return convertToRevenue(toCurrency(amt, oldCurrency, newCurrency));
+}
+
+var toUSD = function(amt, currency) {
+    return toCurrency(amt, currency, 'USD');
+};
+
+var toUSDRevenue = function(amt, currency) {
+    return toCurrencyRevenue(amt, currency, 'USD');
+}
+
+var beginUpdateExchangeRatesPeriodically = function() {
+    new cronJob(CRON_STRING_SIX_HOURS, function() {
+        console.log("\n\nAbout to begin updating exchange rates");
+        console.log("fx.rates is now:\n",fx.rates);
+        updateExchangeRates(function(err) {
+            if (err) { console.error(err); }
+            console.log("Completed update");
+            console.log("fx.rates is now:\n",fx.rates, "\n\n");
+        });
+    }, null, true, null);
+}
+
+var updateExchangeRates = function(callback) {
+    if (typeof(callback) != 'function') {
+        callback = function(err) {
+            if (err) { console.error(err); }
+            console.log("Successfully updated Exchange Rates");
+        }
+    }
+    setTodaysRates(callback);
+}
+
+var getStatus = function() {
+    return initStatus;
+}
+
+var initialize = function(callback) {
+    if (!callback || typeof(callback) != 'function') {
+        console.error("You must supply a callback to the initialize function\n");
+        return;
+    }
+
+    var callbackWrapper = function(callback) {
+        return function(err) {
+            if (!!err) {
+                initStatus = STATUS_ERROR;
+            } else {
+                initStatus = STATUS_INITIALIZED;
+            }
+            callback(err);
+        }
+    }
+
+    oxr.set({app_id: OXR_APP_TOKEN});
+    setTodaysRates(callbackWrapper(callback));
+
+    beginUpdateExchangeRatesPeriodically();
+};
+
+
+exports.toCurrency          = toCurrency;
+exports.toCurrencyRevenue   = toCurrencyRevenue;
+exports.toUSD               = toUSD;
+exports.toUSDRevenue        = toUSDRevenue;
+exports.updateExchangeRates = updateExchangeRates;
+exports.getStatus           = getStatus;
+exports.initialize          = initialize;
+

@@ -1,0 +1,17 @@
+<div class="grid_12">
+    <h2><?php echo __('Contact Us') ?></h2>
+
+    <br/><br/>
+
+    <p class="subheading">Confirmed!</p>
+    <br/>
+    <p class="bodytext">
+        Thanks for reaching out! Someone will have a look at your message<br/>
+        and get back to you as soon as they can.
+    </p>
+    <br/>
+    <p class="bodytext">
+        Cheers,<br/>
+        The YMC Games Team
+    </p>
+</div>

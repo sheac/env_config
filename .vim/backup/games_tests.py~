@@ -1,0 +1,124 @@
+# -*- coding: utf-8 -*-
+
+from ymc.lib import authentication as ApiAuthentication
+
+from ymc.model import User
+from ymc.model import Game
+from ymc.model import Developer
+from ymc.model import UsersGames
+
+from django.test.client import Client
+from django.forms.models import model_to_dict
+
+import datetime
+import calendar
+from django.utils.timezone import utc
+import unittest, json, re
+
+from django.test import TestCase
+from django.test import RequestFactory
+
+from api.views import games as ApiGamesView
+
+def test_cases():
+    return [
+            #'test_update', # TODO fix this test
+    ]
+
+"""
+    GamesTestCase
+"""
+class GamesTestCase(TestCase):
+
+    API_FAIL = 0
+    API_SUCCESS = 1
+
+    """
+    # Build up a game object
+    """
+    def setUp(self):
+
+        values = dict(
+            username='stindill',
+            password='changeme',
+            email='scott@ymcnetwork.com',
+            first_name='Scott',
+            last_name='Tindill',
+        )
+        self.user = User.Build(values)
+        self.user.GenerateForgotPasswordToken()
+        self.user.login()
+
+        values = dict(
+            name='YMC',
+        );
+        self.developer = Developer.Build(values)
+
+        values = dict(
+            title='test',
+            developer_id = self.developer.id,
+            ymc_id='77777777777777777777777',
+        )
+        self.games = Game.Build(values)
+        self.games.save()
+
+        values = dict(
+            title='test allow login no register',
+            developer_id = self.developer.id,
+            ymc_id='99999999999999999999999',
+            itunes_id='initial_id',
+            allow_unregistered_login=True,
+        )
+        self.games_noreg = Game.Build(values)
+        self.games_noreg.save()
+
+        self.request_factory = RequestFactory()
+
+
+    """
+    # Not sure what to do here
+    """
+    def tearDown(self):
+        self.user = None
+
+    """
+    # Tests signature generation
+    """
+    # TODO: fix this test
+    # currently we get a 404 code returned
+    def test_update(self):
+        print('\n========= test_update =========\n')
+
+        client = Client()
+
+        game_update_data = {
+                'uid':self.user.id,
+                'token':self.user.access_token,
+                'gid':self.games.id,
+                'itunes_id':'new_itunes_id',
+            }
+        #game_update_data['_sig'] = ApiAuthentication.Sign(game_update_data)
+
+#        response = client.post(
+#                '/api/games/update/'+str(self.games.ymc_id),
+#                data=game_update_data,
+#                **{'wsgi.url_scheme': 'http'}
+#            )
+#        print("\n\nresponse:")
+#        print(response)
+
+        request = self.request_factory.post('/api/games/update/'+str(self.games.ymc_id), data = game_update_data)
+        print("\n\nrequest:")
+        print(request)
+        response = ApiGamesView.update(request, self.games.ymc_id)
+        print("\n\nresponse:")
+        print(response)
+
+        json_response = json.loads(response.content)
+
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+        self.assertEqual(json_response["response"]["itunes_id"], game_update_data['itunes_id'])
+
+
+
+        print("\n\n\n\n\n")

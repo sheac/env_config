@@ -1,0 +1,66 @@
+from django import forms
+from django.forms import ModelForm, CharField
+from django.db import models
+
+from ymc.model.games import Game
+from ymc.model.developers import Developer
+from ymc.model.publishers import Publisher
+from app.views.admin.permissionsgroupforms import DeveloperChoiceField
+from app.views.admin.permissionsgroupforms import PublisherChoiceField
+
+
+"""
+# Model New Game Form
+"""
+class AdminNewGameForm(ModelForm):
+    mp_token = CharField(label='Mixed Panel Token', required=False, help_text='Token required for MixedPanel Analytics')
+    mp_key = CharField(label='Mixed Panel API Key', required=False, help_text='API Key required for MixedPanel Analytics')
+    mp_secret = CharField(label='Mixed Panel API Secret', required=False, help_text='API Secret required for MixedPanel Analytics')
+    ymc_id  = CharField(label='YMC ID')
+
+    developer = DeveloperChoiceField(queryset = Developer.objects.filter(), required = False)
+    publisher = PublisherChoiceField(queryset = Publisher.objects.filter(), required = False)
+
+    class Meta:
+        model = Game
+        widgets = {
+        }
+
+    def clean(self):
+        if ((self.instance.mp_token != self.cleaned_data['mp_token']) |
+            (self.instance.mp_key != self.cleaned_data['mp_key']) |
+            (self.instance.mp_secret != self.cleaned_data['mp_secret']) |
+            (self.instance.ymc_id != self.cleaned_data['ymc_id'])
+        ):
+            self.cleaned_data['update_analytics_server'] = True
+
+        return self.cleaned_data
+
+
+
+"""
+# Model Edit Game Form
+"""
+class AdminEditGameForm(ModelForm):
+    mp_token = CharField(label='Mixed Panel Token', required=False, help_text='Token required for MixedPanel Analytics')
+    mp_key = CharField(label='Mixed Panel API Key', required=False, help_text='API Key required for MixedPanel Analytics')
+    mp_secret = CharField(label='Mixed Panel API Secret', required=False, help_text='API Secret required for MixedPanel Analytics')
+    ymc_id  = CharField(label='YMC ID')
+
+    developer = DeveloperChoiceField(queryset = Developer.objects.all(), required = False)
+    publisher = PublisherChoiceField(queryset = Publisher.objects.filter(), required = False)
+
+    class Meta:
+        model = Game
+        widgets = {
+        }
+
+    def clean(self):
+        if ((self.instance.mp_token != self.cleaned_data['mp_token']) |
+            (self.instance.mp_key != self.cleaned_data['mp_key']) |
+            (self.instance.mp_secret != self.cleaned_data['mp_secret']) |
+            (self.instance.ymc_id != self.cleaned_data['ymc_id'])
+        ):
+            self.cleaned_data['update_analytics_server'] = True
+
+        return self.cleaned_data

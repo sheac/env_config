@@ -1,0 +1,177 @@
+/**
+* Very simple POC of Node JS => Mongo DB analytics data logging
+* Uses MongoJS Node Module
+**/
+
+console.log(1);
+var hostname      = require('os').hostname();
+var processNumber = process.env.INDEX_OF_PROCESS || 0;
+var fs            = require('fs');
+var path          = require('path');
+var YmcaLogger    = require('../tools/logging/ymca-logger');
+//var APPLICATION_NAME = util.format('YMCA Logger %s [%d]', hostname, processNumber);
+var APPLICATION_NAME = 'YMCA Logger '+hostname+' ['+processNumber+']';
+console.log(1);
+
+var options = {
+    // time in ms when the event loop is considered blocked
+    blockThreshold: 10
+};
+
+console.log(1);
+var file_based_config_path = path.join(path.join(__dirname, '..'), 'set_as_production.txt')
+var file_based_env_config = fs.existsSync(file_based_config_path) ? 'production' : 'development';
+var env = process.env.NODE_ENV || file_based_env_config || 'development';
+
+var ymcaLogger = new YmcaLogger(['ProxyServer-Stage2']);
+
+require('strong-agent').profile(
+    'fa2394b0fe56d17756b2c38a237cf7c9',
+    [APPLICATION_NAME, hostname, processNumber],
+    options // optional
+);
+
+var config = {
+    development:{
+        database:'192.168.1.57:27017/ymca?slaveOk=true',
+        collections: ['events', 'sdk_debug', 'log',],
+    },
+    production:{
+        database:'mongodb0.ymcnetwork.com:27017,mongodb1.ymcnetwork.com:27017,mongodb2.ymcnetwork.com:27017/ymca?slaveOk=true',
+        collections: ['events', 'sdk_debug', 'log',],
+    }
+};
+
+ymcaLogger.info("Enviroment: " + env);
+
+var http = require('http');
+var querystring = require('querystring');
+var url = require('url');
+
+// For responding to http requests
+var emitter = new(require('events').EventEmitter);
+
+var mongojs = require('mongojs');
+
+
+var db = mongojs.connect(config[env].database, config[env].collections);
+var collections = {};
+for (var i = 0; i < config[env].collections.length; i++) {
+    collections[config[env].collections[i]] = db.collection(config[env].collections[i]);
+}
+
+/**
+* Create Node Server
+* - maps uri to event
+**/
+var server = http.createServer(function(request,response){
+
+    // Get uri path
+    var uri = url.parse(request.url);
+    var event_string = uri.pathname.replace(/\/$/, "");
+    
+    // Trigger event
+    emitter.emit(event_string, request, response);
+});
+
+
+/**
+* /track event 
+* Should contain base64 encoded json data to log to database
+* Build up body data, decode it and log it to database
+**/
+emitter.on("/track", function (request, response) {
+	if(request.method == 'POST') {
+        ymcaLogger.info('Got POST /track request...');
+		var body = '';
+
+        request.on('data', function (data) {
+            body += data;
+        });
+
+        request.on('end', function () {
+
+            saveToDB(body)
+
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write("YA-T1");
+            response.end();
+
+        });
+	}
+});
+
+emitter.on("/import", function (request, response) { 
+    if(request.method == 'POST') {
+        ymcaLogger.info('Got POST /import request...');
+        var body = '';
+
+        request.on('data', function (data) {
+            body += data;
+        });
+
+        request.on('end', function () {
+
+            saveToDB(body);
+
+            response.writeHead(200, {"Content-Type": "text/plain"});
+            response.write("YA-I1");
+            response.end();
+
+        });
+    }
+});
+
+function saveToDB(body){
+
+    var post_data = querystring.parse(body);
+    var dataB64 = post_data.data;
+    var dataString = Buffer(dataB64,'base64').toString('utf8');
+//    ymcaLogger.info("Got data: "+dataB64+"\n=>\n"+dataString);
+    var eventObj = JSON.parse(dataString);
+    eventObj.properties.time = new Date(eventObj.properties.time * 1000);     // change Unix TS to JS TS
+    eventObj.properties.time_pacific = new Date(eventObj.properties.time_pacific * 1000);     // change Unix TS to JS TS
+
+    ymcaLogger.info({event:eventObj});
+
+    var collection_name = null;
+    if (eventObj.properties.hasOwnProperty('YA0debug') && eventObj.properties.YA0debug == 1) {
+        collection_name = 'sdk_debug';
+    } else if (eventObj.event && eventObj.event == 'YA0log') {
+        collection_name = 'log';
+    } else {
+        collection_name = 'events';
+    }
+    var collection = collections[collection_name];
+    ymcaLogger.info("-->routing event to collection: " + collection_name + "\n");
+    delete eventObj.properties.YA0debug;
+
+    collection.save(eventObj,function(err,saved){
+        if (err) {
+            ymcaLogger.error({'db err':err});
+        }
+    });
+
+}
+
+
+
+/**
+* Start Node Server
+**/
+var port = process.env.PORT || 4000;
+server.listen(port, function() {
+    ymcaLogger.info(
+        "\n\n\n\n\n"+
+        "=======================================================================\n"+
+        "YMCA Started. Listening on "+port.toString()+"..."
+        );
+});
+
+process.on('uncaughtException', function(err) {
+    // handle the error safely
+    ymcaLogger.error({
+        message: "uncaught exception",
+        error: err
+    });
+});

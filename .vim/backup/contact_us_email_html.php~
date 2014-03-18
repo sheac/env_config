@@ -1,0 +1,34 @@
+<h4><?php echo HTML::chars($from_name) ?> has submitted a "Contact Us" request for the reason, "<?php echo HTML::chars($reason) ?>".</h4>
+
+<p>
+    The message reads as follows:
+</p>
+
+<hr>
+
+<h5><i><?php echo HTML::chars($subject) ?></i></h5>
+<p>
+    <i><?php echo HTML::chars($message) ?></i>
+</p>
+
+<hr>
+
+<p>
+    To resolve this contact request, please:
+</p>
+<ol>
+    <li>
+        Forward this message, along with your response, to the individual's email address: <?php echo HTML::chars($from_email) ?>.
+    </li>
+    <li>
+        Reply-All to this message, notifying the other recipients that you have already responded to this user's request.
+    </li>
+</ol>
+<p>
+    (Ultimately, we'll have a smoother process for this, but for now this is how things go.)
+</p>
+
+<p>
+    Cheers,<br/>
+    The Team
+</p>

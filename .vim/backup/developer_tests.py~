@@ -1,0 +1,406 @@
+# -*- coding: utf-8 -*-
+
+from ymc.lib import authentication as ApiAuthentication
+
+from ymc.model import User
+from ymc.model import Game
+from ymc.model import Developer
+from ymc.model import UsersGames
+
+from django.test.client import Client
+from django.forms.models import model_to_dict
+
+import datetime
+import calendar
+from django.utils.timezone import utc
+import unittest, json, re
+
+from django.test import TestCase
+from django.test import RequestFactory
+
+from api.views import developers as ApiDevelopersView
+
+def test_cases():
+    return [
+#        'test_delete_game_success',
+#        'test_delete_game_failure_auth',
+#        'test_delete_game_failure_game_not_found',
+#        'test_register_success',
+#        'test_login_success',
+#        'test_games_success',
+        'test_games_new_success',
+    ]
+
+"""
+    DeveloperTestCase
+"""
+class DeveloperTestCase(TestCase):
+
+    API_FAIL = 0
+    API_SUCCESS = 1
+
+    """
+    # Build up a user object
+    """
+    def setUp(self):
+        values = dict(
+            username='stindill',
+            password='changeme',
+            email='scott@ymcnetwork.com',
+            first_name='Scott',
+            last_name='Tindill',
+        )
+
+        self.user = User.Build(values)
+        self.user.is_admin = True
+        self.user.GenerateForgotPasswordToken()
+        self.user.save()
+        self.user.login()
+
+
+        dev_values = dict(
+            name='YMC',
+        );
+
+        self.developer = Developer.Build(dev_values)
+        self.developer.save()
+
+        values = dict(
+            title='test',
+            developer_id = self.developer.id,
+            ymc_id='77777777777777777777777',
+        )
+
+        self.games = Game.Build(values)
+        self.games.save()
+
+        values = dict(
+            title='test allow login no register',
+            developer_id = self.developer.id,
+            ymc_id='99999999999999999999999',
+            allow_unregistered_login=True,
+        )
+
+        self.games_noreg = Game.Build(values)
+        self.games_noreg.save()
+
+
+
+
+        self.request_factory = RequestFactory()
+
+
+    """
+    # Not sure what to do here
+    """
+    def tearDown(self):
+        self.user = None
+
+
+
+
+
+
+
+
+    """
+        *****************************************
+        ************* delete_game ***************
+        *****************************************
+    """
+
+
+
+
+
+
+    def test_delete_game_success(self):
+        print('\n========== test_delete_game_success==========\n')
+
+        client = Client()
+
+        initial_num_games = Game.objects.count()
+        self.assertEqual(Game.objects.count(), initial_num_games)
+
+        req_data = {
+                'did'   : self.developer.id,
+                'gid'   : self.games.ymc_id,
+                'uid'   : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        self.assertEqual(res_json['response']['game']['ymc_id'], self.games.ymc_id)
+        self.assertEqual(Game.objects.count(), (initial_num_games - 1))
+
+
+    def test_delete_game_failure_auth(self):
+        print('\n========== test_delete_game_failure_auth==========\n')
+
+        client = Client()
+
+        req_data = {
+                'did'   : self.developer.id,
+                'gid'   : self.games.ymc_id,
+                'uid'   : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        print "1. bad did"
+        BAD_DID = '10000000'
+        url = '/api/developers/'+BAD_DID+'/games/'+str(req_data['gid'])+'/delete'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+
+        print "2. bad token"
+        req_data['token'] = 'wrong'
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+
+        print "3. bad uid"
+        req_data['uid'] = 1000000000
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+
+        print "4. bad _sig"
+        other_hash = {'a':1, 'b':2}
+        req_data['_sig'] = ApiAuthentication.Sign(other_hash)
+        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+
+        print "5. not admin"
+        self.user.is_admin = False
+        self.user.save()
+        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+
+
+    def test_delete_game_failure_game_not_found(self):
+        print('\n========== test_delete_game_failure_game_not_found ==========\n')
+
+        client = Client()
+
+        bad_gid = 11111111111
+        req_data = {
+                'did'   : self.developer.id,
+                'gid'   : bad_gid,
+                'uid'   : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+
+
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  register  ***************
+        *****************************************
+    """
+
+
+    def test_register_success(self):
+        print('\n========== test_register_success ==========\n')
+
+        client = Client()
+
+        initial_num_devs = User.objects.filter(developer_id=self.developer.id).count()
+
+        req_data = {
+                'email' : self.user.email,
+                'username' : self.user.username,
+                'password' : 'changeme',
+                'developer_name' : self.developer.name,
+                'register_as_developer' : True,
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/developers/register'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+
+        new_num_devs = User.objects.filter(developer_id=self.developer.id).count()
+        self.assertEqual(new_num_devs, (initial_num_devs + 1))
+
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  login  ***************
+        *****************************************
+    """
+
+
+    def test_login_success(self):
+        print('\n========== test_login_success ==========\n')
+
+        client = Client()
+
+        self.user.developer = self.developer
+        self.user.InvalidateAccessToken()
+        self.user.save()
+        self.assertFalse(self.user.IsTokenValid())
+
+        req_data = {
+                'email' : self.user.email,
+                'username' : self.user.username,
+                'password' : 'changeme',
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/developers/login'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        reloaded_user = User.objects.get(id=self.user.id)
+        self.assertTrue(reloaded_user.IsTokenValid())
+
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  games  ***************
+        *****************************************
+    """
+
+
+    def test_games_success(self):
+        print('\n========== test_games_success ==========\n')
+
+        client = Client()
+
+        req_data = {
+                'uid' : self.user.id,
+                'gid' : self.games.ymc_id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        self.games.developer = None
+        self.games.save()
+
+        url = '/api/developers/games/' + str(self.developer.id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        game_ymc_ids = map(lambda x: x['ymc_id'], res_json['response']['games'])
+        self.assertNotIn(self.games.ymc_id, game_ymc_ids)
+
+        self.games.developer = self.developer
+        self.games.save()
+
+        url = '/api/developers/games/' + str(self.developer.id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        game_ymc_ids = map(lambda x: x['ymc_id'], res_json['response']['games'])
+
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  games_new  ***************
+        *****************************************
+    """
+
+
+    def test_games_new_success(self):
+        print('\n========== test_games_new_success ==========\n')
+
+        client = Client()
+
+        init_num_games = Game.objects.all().count()
+        game_title = 'New Game'
+
+        req_data = {
+                'uid' : self.user.id,
+                'title' : game_title,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/developers/games/new/' + str(self.developer.id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        self.assertEqual(res_json['response']['game']['title'], game_title)
+
+        resulting_num_games = Game.objects.all().count()
+        self.assertEqual(init_num_games, (resulting_num_games - 1))
+
+
+
+
+
+
+
+
+
+
+
+
+print("\n\n\n\n\n")

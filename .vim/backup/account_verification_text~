@@ -1,0 +1,11 @@
+Dear {{user.username}},
+
+You have requested to reset your YMC Games password.
+
+To reset your password please visit the following link:
+
+{{user_reset_password_link}}
+
+Thank you,
+
+- YMC Games

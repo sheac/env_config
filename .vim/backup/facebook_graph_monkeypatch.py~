@@ -1,0 +1,37 @@
+from ymc.lib import facebook
+
+class DummyGraphAPI(object):
+
+    def __init__(self, fb_id_with_switch=None, timeout=None):
+        """
+        Initializes a DummyGraphAPI object using the fb_id_with_switch parameter
+        * if that parameter is "<anything>:success", then the call to get_object
+            will return something nice
+        * however, if it is "<anything>:<not_success", then the call to get_object
+            will return None
+        """
+        [self.facebook_id, self.success_or_fail] = fb_id_with_switch.split(':')
+
+    def get_object(self, id, **args):
+        """
+        Uses self.success_or_fail to determine what kind of thing to return
+        * if it's 'success', then we return a nice dict
+        * if it's anything else, we a crappy dict
+        """
+
+        if (self.success_or_fail == 'success'):
+            return dict(
+                    id=self.facebook_id,
+                    username='fb_username',
+                    first_name='fb_firstname',
+                    last_name='fb_lastname',
+                    email=self.facebook_id+'@email.com',
+                    gender='male',
+                )
+
+        else:
+            return dict(
+                id='bad_id',
+            )
+
+facebook.GraphAPI = DummyGraphAPI

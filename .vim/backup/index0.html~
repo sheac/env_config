@@ -1,0 +1,71 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>YA Dashboard</title>
+<!--
+    <link href="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet">
+    <link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.1/css/bootstrap-responsive.min.css" rel="stylesheet">
+    <link href="//mgcrea.github.com/angular-strap/css/prettify.css" rel="stylesheet">
+-->
+    <link href="yaStyle.css" rel="stylesheet">
+    <link href="http://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="./lib/nv.d3.css" rel="stylesheet">
+
+
+    <link href="./lib/angular-busy.css" rel="stylesheet">
+
+
+</head>
+<body ng-app='yaReporter'>
+
+    <div ng-controller='pageController'>
+
+        <div ui-view='page'></div>
+
+
+
+
+
+    </div>
+    <!--
+        <script src="http://ajax.googleapis.com/ajax/libs/angularjs/1.0.6/angular.min.js"></script>
+    <script src="./bower_components/angular/angular.js"></script>
+    -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.0.7/angular.js"></script>
+    <script src="./bower_components/angular-animate/angular-animate.js"></script>
+    <script src="./bower_components/angular-promise-tracker/promise-tracker.js"></script>
+
+    <script src="http://code.angularjs.org/1.0.0rc10/angular-cookies-1.0.0rc10.js "></script>
+    <script src="./lib/angular-busy-ya.js"></script>
+
+    <script src="http://code.angularjs.org/1.1.4/angular-resource.js"></script>
+    <script src="./bower_components/angular-ui-router/release/angular-ui-router.js"></script>
+<!--
+    <script src="http://angular-ui.github.io/ui-router/release/angular-ui-router.min.js"></script>
+-->
+
+
+
+
+    <script src="http://cdn.jsdelivr.net/momentjs/2.0.0/moment.min.js"></script>
+
+    <script src="./js/ui-bootstrap-0.3.0.min.js"></script>
+
+<!--
+    <script src="./lib/d3.v3.js"></script>
+-->
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/d3/3.1.6/d3.min.js"></script>
+    <script src="./lib/nv.d3.min.js"></script>
+
+    <script src="./js/Chart.min.js"></script>
+    <script src="./js/filters.js"></script>
+    <script src="./js/yaClient.js"></script>
+
+
+
+
+
+
+
+</body>
+</html>

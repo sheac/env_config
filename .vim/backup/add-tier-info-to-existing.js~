@@ -1,0 +1,71 @@
+var t2c2t = require('./tier2currency2tier.js');
+var mongo = require('mongojs');
+var async = require('async');
+
+var DB_URL = 'localhost:27017/ymca?slaveOk=true',
+    COLLECTIONS = ['events', 'sdk_debug'],
+    TERMINAL_ENTRY = "TERMINAL_ENTRY";
+
+var db = mongo.connect(DB_URL, COLLECTIONS);
+
+var _chargeEvents = [],
+    _id2tierMaps = [];
+
+async.series({
+    populate_chargeEvents: function(callback) {
+        db.events.find({event: "YA0charge" }, function assignDocsTo_chargeEvents(err, docs) {
+            if (err) return callback(err);
+
+            _chargeEvents = docs;
+
+            console.log("calling populate_chargeEvents callback");
+            callback();
+        });
+    },
+
+    populate_id2tier: function(callback) {
+        async.each(_chargeEvents, function determineTier(doc, eachCallback) {
+            if (doc) {
+                var currency    = doc.properties.currency,
+                    amt         = doc.properties.amount;
+                var tier = t2c2t.convertPriceToTier(amt, currency);
+                var usd = t2c2t.convertTierToPrice(tier, currency);
+                _id2tierMaps.push({_id: doc._id, tier: tier, usd: usd});
+            }
+            eachCallback();
+        },
+        function(err) { if (err) return callback(err); }
+    );
+
+        console.log("calling populate_id2tier callback");
+        callback();
+    },
+
+    addTierInfoToAll: function(callback) {
+        async.each(_id2tierMaps, function(_id2tierMap, eachCallback){
+            var _id     = _id2tierMap['_id'],
+                tier    = _id2tierMap['tier'],
+                usd     = _id2tierMap['usd'];
+
+            db.events.findAndModify({
+                query: {_id: _id},
+                //update: {$set: {"properties.YA0tier_apple": tier}},
+                update: {$set: {"properties.YA0USD": usd}},
+            }, function(err, doc) {
+                if (err) return callback(err);
+                eachCallback();
+            });
+        },
+        function(err){
+            if (err) return callback(err);
+
+            console.log("calling addTierInfoToAll callback");
+            callback();
+        });
+    },
+}, function(err) {
+    if (err) throw err;
+    console.log("\nfinished\n");
+    console.log("[ manually exiting, because some callback or other hasn't been called :( ]");
+    process.exit(0);
+});

@@ -1,0 +1,13 @@
+<div ng-controller="refreshRevenueController">
+    <div>
+        Holla!
+    </div>
+    <!--
+    <div ng-if="status == 'success'">
+        <p>Success!!!</p>
+    </div>
+    <div ng-if="status == 'failure'">
+        <p>Failure:(</p>
+    </div>
+-->
+</div>

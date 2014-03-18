@@ -1,0 +1,69 @@
+$(function() {
+    var TOTAL_UPDATE_INTERVAL = 5000, // five seconds
+        EXCLUDED_UPDATE_INTERVAL = 30000; // five minutes
+
+    var self = this;
+
+    var numUsersSpan = $(".num-users"),
+        dialogPassword = $("#dialog input[name=password]"),
+        totalCount = null,
+        excludedCount = null,
+        finalCount = null
+        password = '';
+
+    function updateTotalCount() {
+        $.getJSON("/usercounter/total_count?password="+password,
+                function(json) {
+                    totalCount = json['count'];
+                });
+        updateFinalCount();
+    }
+
+    function updateExcludedCount() {
+        $.getJSON("/usercounter/excluded_count?password="+password,
+                function(json) {
+                    excludedCount = json['count'];
+                });
+        updateFinalCount();
+    }
+
+    function isNumeric(n) {
+        return !isNaN(parseFloat(n)) && isFinite(n);
+    }
+
+    function updateFinalCount() {
+        if (isNumeric(totalCount) && isNumeric(excludedCount)) {
+            console.log("here!");
+            finalCount = totalCount - excludedCount;
+            numUsersSpan.text(finalCount);
+        }
+    }
+
+    function beginUpdatingCounter() {
+        updateTotalCount();
+        updateExcludedCount();
+
+        this.setInterval(updateTotalCount, TOTAL_UPDATE_INTERVAL);
+        this.setInterval(updateExcludedCount, EXCLUDED_UPDATE_INTERVAL);
+    }
+
+    function consumeDialogPassword() {
+        password = dialogPassword.val();
+        beginUpdatingCounter();
+    }
+
+
+
+    $('#dialog').dialog({
+        autoOpen: true,
+        buttons: [
+            {
+                text: "Yup",
+                click: function() {
+                    $(this).dialog("close");
+                    consumeDialogPassword();
+                }
+            }
+        ],
+    });
+})

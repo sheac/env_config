@@ -1,0 +1,20 @@
+<div class="sdk-debug-tutorial-modal">
+    <div class="modal-header">
+        <div class="modal-header-title">
+            <h2>
+                {{language+'.info_modal.header' | translate}}
+            </h2>
+        </div>
+        <div class="modal-header-dismiss">
+            <a href="#" ng-click="close()"><i class="fa fa-times-circle"></i></a>
+        </div>
+        <div class="clear"></div>
+    </div>
+
+    <div class="modal-body" ng-bind-html-unsafe="language+'.info_modal.body' | translate">
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary" ng-click="close()">{{language+'.info_modal.close_button' | translate}}</button>
+    </div>
+</div>

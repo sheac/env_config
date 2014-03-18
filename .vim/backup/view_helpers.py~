@@ -1,0 +1,3 @@
+def if_empty_str_then_None(input):
+    print ('input == ""? ' + str(input == ''))
+    return None if (input == '') else input

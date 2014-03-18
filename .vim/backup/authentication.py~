@@ -1,0 +1,267 @@
+import hashlib, datetime, re, time
+
+from django.shortcuts import redirect
+
+from django.db.models import Q
+from django.utils.timezone import utc
+from django.http import HttpResponse, QueryDict, HttpResponseNotFound, HttpResponsePermanentRedirect
+
+from urlparse import parse_qsl
+
+from ymc.model.users import User
+
+from api import response as ApiResponse
+
+from ymc.lib import facebook
+
+from django.conf import settings
+
+
+"""
+    Requires Signature decorator
+"""
+def requires_signature(view):
+    def f(request, *args, **kargs):
+
+        if (( not settings.DEBUG) and ( not request.is_secure())):
+            return  HttpResponseNotFound("404")
+
+        signature = Sign(request.REQUEST)
+        request_signature = request.REQUEST.get('_sig')
+
+        if(signature != request_signature):
+            return HttpResponse(ApiResponse.Error(None, "Signature Error"))
+        else:
+            return view(request, *args, **kargs)
+    return f
+
+"""
+    Requires admin access
+"""
+def requires_admin(view):
+    def f(request, *args, **kargs):
+
+        user = AuthenticateAdmin(request.REQUEST)
+
+        if( not user):
+            return  HttpResponse(ApiResponse.Error(None, "Failed to authenticate admin user"))
+        else:
+            return view(request, *args, **kargs)
+
+    return f
+
+"""
+    Generate a Signature
+"""
+def Sign(data):
+    temp = dict(data)
+    #_sig = temp.get('_sig')
+    if(temp.get('_sig') is not None):
+        del temp['_sig']
+
+    ascii_data = ""
+    for key, value in sorted(temp.iteritems()):
+        # print(key+" = "+value)
+        # Don't include non-strings in signature
+
+        if( not value):
+            continue;
+        elif(isinstance(value, int)):
+            value = str(value)
+        elif(isinstance(value, datetime.date)):
+            value = value.strftime("%s")
+
+        # This parameter should be a string, if not just ignore it...
+        if(not isinstance(value, str) and not isinstance(value, unicode)) :
+            continue;
+
+        try:
+            byte_array = bytearray(value, encoding="utf8", errors="ignore")
+            ascii_data += "".join(map(chr, byte_array))
+        except Exception as e:
+            print(e);
+            continue;
+
+    #print("ASCII DATA = "+ascii_data)
+    signature = hashlib.sha256(ascii_data).hexdigest()
+
+    #print("CALC signature = "+signature)
+    #print("_SIG signature = "+_sig)
+    return signature
+
+"""
+    Validate Username / email and password
+    - Returns True if validation succeeds
+"""
+def Validate(user, password):
+    if ((password is None) | (user is None)):
+        return False
+    encrypted_password = User.GeneratePassword(user.salt, password)
+
+    if(encrypted_password == user.password):
+        return True
+
+    return False
+
+
+"""
+    Authenticate
+"""
+def Authenticate(data, uid=None):
+
+    # Get signature of incoming data
+    # print(data);
+    request_signature = data.get('_sig')
+    #print("request_signature = "+request_signature)
+
+    if ( not request_signature):
+        return None
+
+    valid_signature = Sign(data)
+    #print("valid_signature = "+valid_signature)
+
+    if(request_signature != valid_signature):
+        return None
+
+    # print("valid_signature = "+valid_signature)
+    access_token = data.get('token')
+
+    if( not uid):
+        uid = data.get('uid')
+
+    # print("Finding User = "+str(uid))
+    # print("with access_token = "+str(access_token))
+    user = User.findByAccessToken(token=access_token, uid=uid)
+
+    if(user is None):
+        return None
+    utc_now = datetime.datetime.utcnow().replace(tzinfo=utc)
+    if(user.access_token_expiry <= utc_now):
+        user.logout()
+        return None
+
+    return user
+
+
+"""
+    Authenticate no signature
+"""
+def AuthenticateNoSig(data, uid=None):
+    access_token = data.get('token')
+
+    if( not uid):
+        uid = data.get('uid')
+
+    # print("Finding User = "+str(uid))
+    # print("with access_token = "+str(access_token))
+    user = User.findByAccessToken(token=access_token, uid=uid)
+
+    if(user is None):
+        return None
+    utc_now = datetime.datetime.utcnow().replace(tzinfo=utc)
+    if(user.access_token_expiry <= utc_now):
+        user.logout()
+        return None
+
+    return user
+
+
+"""
+    Authenticate Admin
+"""
+def AuthenticateAdmin(data, uid=None):
+
+    user = Authenticate(data,uid)
+
+    result = (user and user.is_admin)
+
+    return result
+
+
+
+"""
+    Validate Admin
+"""
+def ValidateAdmin(user, password):
+
+    result = Validate(user=user, password=password)
+
+    result = result and ((user is not None) and (user.is_admin == True))
+
+    return result
+
+
+
+"""
+    Validate Admin or Publisher
+"""
+def ValidateAdminOrPublisher(user, password):
+
+    result = Validate(user=user, password=password)
+
+    result = result and ((user is not None) and (user.is_admin == True or user.publisher))
+
+    return result
+
+"""
+    Authenticate Group
+"""
+def ValidateGroup(user, password, group):
+
+    result = Validate(user=user, password=password)
+
+    found_group = group.__class__.FindByUser(user)
+    result = result and ((user is not None) and (found_group and found_group.id == group.id))
+
+    return result
+
+
+"""
+    Authenticate with facebook
+"""
+def AuthenticateFacebook(facebook_id, facebook_access_token, result_message):
+
+    result = None
+
+    try:
+        graph = facebook.GraphAPI(facebook_access_token)
+        profile = graph.get_object("me")
+
+        print "\n\n\UH HUH!!\n\n\n"
+
+        profile_id = None
+
+        if(profile):
+            profile_id = profile.get('id')
+
+        if(facebook_id == profile_id):
+
+            email = profile.get('email')
+            if( not email):
+                result_message.append("Facebook email permission required")
+                return None;
+
+            gender = 0
+            if 'gender' in profile:
+                if(profile.get('gender') != 'male'):
+                    gender = 1
+
+            result = dict(
+                username=profile.get('username'),
+                password=None,
+                first_name=profile.get('first_name'),
+                last_name=profile.get('last_name'),
+                email=email.lower(),
+                facebook_id=facebook_id,
+                facebook_access_token=facebook_access_token,
+                is_admin=False,
+                gender=gender,
+            )
+
+
+
+    except Exception as e:
+        result_message.append(e.message);
+        result = None
+
+    return result

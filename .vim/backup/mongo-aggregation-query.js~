@@ -1,0 +1,119 @@
+var db = require('./database').db;
+var result = { from_time: 'Sun Jan 26 2014 16:00:00 GMT-0800 (PST)',
+  to_time: 'Tue Feb 25 2014 16:00:00 GMT-0800 (PST)',
+  join_time: 'Mon Jan 27 2014 16:00:00 GMT-0800 (PST)',
+  group:
+   { year: { '$year': '$properties.time_pacific' },
+     indexOfTime: { '$dayOfYear': '$properties.time_pacific' },
+     userid: '$properties.distinct_id' },
+  error: null };
+var ymc_id = '4b5b5c2e208811e3b5a722000a97015e'
+
+
+db.collection('sdk_debug').aggregate(
+    [{
+        $match: {
+            'properties.YA0token': ymc_id,
+            event: 'YA0birth',
+            'properties.time': {
+                $gte: new Date(result.from_time),
+                $lte: new Date(result.to_time)
+            }
+        }
+    },{
+        $group: {
+            _id: result.group
+        }
+    //}, {
+        //$group: {
+            //_id:{y:"$_id.year",t:"$_id.indexOfTime"},
+            //users: {$sum: 1 }
+        //}
+    }],
+    function(err,result){
+        console.log(result);
+        //var result2 = fillGap(startTime,endTime,type,result)
+        //res.send(result2);
+    });
+
+
+db.events.aggregate(
+    [{
+        $match: {
+            'properties.YA0token': ymc_id,
+            event: 'YA0start',
+            'properties.time': {$gte: startTime, $lte: endTime}
+        },
+    },{
+        $group: {
+            year: { '$year': '$properties.time' },
+            indexOfTime: { '$week': '$properties.time' },
+            userid: '$properties.distinct_id'
+        }
+    },{
+        $group:{
+            _id:{y:"$_id.year",t:"$_id.indexOfTime"},
+            users: {$sum: 1 }
+        }
+    },{
+        $sort:{_id:1}
+    }])
+
+
+/**************************************************************************************************************/
+/**************************************************************************************************************/
+/**************************************************************************************************************/
+/**************************************************************************************************************/
+
+
+var startTime = new Date(2013,09,00);
+var endTime = new Date(2014,00,31);
+var ymc_id = 'b8b73492dac311e284c212313b0ace15';
+var group = {
+            year: { '$year': '$properties.time' },
+            indexOfTime: { '$week': '$properties.time' },
+            userid: '$properties.distinct_id'
+        };
+
+
+db.events.aggregate(
+    [{
+        $match: {
+            //'properties.YA0token': ymc_id,
+            event: 'YA0start',
+            'properties.time': {$gte: startTime, $lte: endTime}
+        }
+    },{
+        $group:{
+            _id: {
+                year: { $year: '$properties.time' },
+                indexOfTime: { $week: '$properties.time' },
+                userid: '$properties.distinct_id'
+            }
+        }
+    }])
+
+
+db.events.aggregate(
+    [{
+        $match: {
+            'properties.YA0token': ymc_id,
+            event: 'YA0start',
+            'properties.time': {$gte: startTime, $lte: endTime}
+        },
+    },{
+        $group: {
+            year: { '$year': '$properties.time' },
+            indexOfTime: { '$week': '$properties.time' },
+            userid: '$properties.distinct_id'
+        }
+    },{
+        $group:{
+            _id:{y:"$_id.year",t:"$_id.indexOfTime"},
+            users: {$sum: 1 }
+        }
+    },{
+        $sort:{_id:1}
+    }])
+
+

@@ -1,0 +1,91 @@
+import subprocess
+import os
+
+from ymc.model.games import Game
+from ymc.model.users import User
+from ymc.lib.authentication import Sign
+
+from ymc_platform import settings
+
+TESTFIX = 'testpfx'
+NUM_USERS = 100
+BASE_URL = 'http://test.ymcgames.com/api/'
+#BASE_URL = '192.168.1.53:6060/api/'
+ACTION = 'users/register'
+
+TEST_DIR = settings.BASE_DIR + '/ymc/tests/load/'
+URL_FILE = 'siege_url_file.txt'
+URL_FILE_PATH= TEST_DIR+URL_FILE
+
+N_CONCURRENT = 100
+TEST_DURATION = 60
+
+# get some random game id (there better be at least three games)
+gid = Game.objects.values()[2]['ymc_id']
+
+# create the url query parameters and store
+# our test user email addresses for later
+# lookup and deletion
+params_arr = []
+emails = []
+for n in xrange(0, NUM_USERS):
+    curr_fix = TESTFIX+str(n)
+    data = {}
+    data['email'] = curr_fix+'@'+curr_fix+'.com'
+    data['password'] = 'password'
+    data['gid'] = gid
+    sig = Sign(data)
+    #
+    params = 'email='      + data['email'] + \
+            '&password='    + data['password'] + \
+            '&gid='         + data['gid'] + \
+            '&_sig='        + sig
+    params_arr.append(params)
+    emails.append(data['email'])
+
+# create the "url file" for Siege to use
+f = open(URL_FILE_PATH, 'w')
+for params in params_arr:
+    # putting "POST" between the url and the query params
+    # makes it a POST action
+    url_line = BASE_URL + ACTION + " POST " + params + "\n"
+    f.write(url_line)
+
+f.close()
+
+# build and run the siege command
+n_concurrent = '--concurrent='  + str(N_CONCURRENT)
+duration = '--time='            + str(TEST_DURATION)+'S'
+url_file = '--file='            + URL_FILE_PATH
+
+command_arr = [
+            'siege',
+            n_concurrent,
+            duration,
+            '--verbose',
+            url_file
+        ]
+
+subp = subprocess.Popen(
+        command_arr,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+
+# print the stuff for show
+while (subp.poll() is None):
+    output = subp.stdout.readline()
+    print output
+
+cmdstdout, cmdstderr = subp.communicate()
+
+op = str(cmdstdout)
+err = str(cmdstderr)
+
+#print('output:')
+#print(op)
+print('error:')
+print(err)
+
+# delete all those test users we just created
+[User.findByEmail(email).delete() for email in emails]

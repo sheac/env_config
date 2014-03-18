@@ -1,0 +1,283 @@
+<?php
+
+//define('YMC_API_ROOT', "http://api.ymcgames.com/api");
+//define('YMC_API_SECURE_ROOT', "https://api.ymcgames.com/api");
+
+define('YMC_API_ROOT', "http://test.ymcgames.com/api");
+define('YMC_API_SECURE_ROOT', "http://test.ymcgames.com/api");
+
+
+//define('YMC_API_ROOT', "http://192.168.1.53:6060/api");
+//define('YMC_API_SECURE_ROOT', "http://192.168.1.53:6060/api");
+
+class YMC_API {
+
+
+    /*
+    */
+    static public function DeveloperRegister($params)
+    {
+
+        $url = YMC_API_SECURE_ROOT."/developers/register";
+
+        $result = self::CurlApiRequest($url, $params, true, true, true);
+
+        return $result;
+    }
+
+    /*
+    */
+    static public function DeveloperLogin($params)
+    {
+
+        $url = YMC_API_SECURE_ROOT."/developers/login";
+
+        $result = self::CurlApiRequest($url, $params, true, true, true);
+
+        return $result;
+    }
+
+    /*
+    */
+    static public function UserLogin($params)
+    {
+
+        $url = YMC_API_SECURE_ROOT."/users/login";
+
+        $result = self::CurlApiRequest($url, $params, true, true, true);
+
+        return $result;
+
+    }
+
+    /*
+    */
+    static public function UserInfo($params)
+    {
+
+        $uid = Arr::get($params, 'uid');
+        $url = YMC_API_ROOT."/users/$uid";
+
+        if( ! empty($uid)) {
+            unset($params['uid']);
+        }
+
+        $result = self::CurlApiRequest($url, $params, false, false, true);
+
+        return $result;
+    }
+
+
+    /*
+    */
+    static public function UserExists($params)
+    {
+
+        $url = YMC_API_SECURE_ROOT."/users/exists";
+
+        $result = self::CurlApiRequest($url, $params, true, true, true);
+
+        return $result;
+    }
+
+    /*
+    */
+    static public function UserLogout($params)
+    {
+
+        $url = YMC_API_ROOT."/users/logout";
+
+        $result = self::CurlApiRequest($url, $params, false, false, true);
+
+        return $result;
+    }
+
+    /*
+    */
+    static public function DeveloperGames($params)
+    {
+        $did = Arr::get($params, 'did');
+        $url = YMC_API_ROOT."/developers/games/$did";
+
+        if( ! empty($uid)) {
+            unset($params['did']);
+        }
+
+        $result = self::CurlApiRequest($url, $params, false, false, true);
+        $result["response"]["games"] = self::TranslateItunesIdToAppId_List($result["response"]["games"]);
+
+
+        return $result;
+    }
+
+    /*
+    */
+    static public function DeveloperNewGame($params)
+    {
+        $did = Arr::get($params, 'did');
+        $url = YMC_API_SECURE_ROOT."/developers/games/new/$did";
+        if( ! empty($uid)) {
+            unset($params['did']);
+        }
+
+        $result = self::CurlApiRequest($url, $params, true, true, true);
+        $result["response"]["game"] = self::TranslateItunesIdToAppId_Singleton($result["response"]["game"]);
+
+        return $result;
+    }
+
+
+    /*
+    */
+    static public function AdminGames($params)
+    {
+        $url = YMC_API_ROOT."/admin/games";
+
+        $result = self::CurlApiRequest($url, $params, false, false, true);
+
+        return $result;
+    }
+
+    /*
+    */
+    static public function UpdateGameAppId($gid, $params)
+    {
+        $url = YMC_API_SECURE_ROOT."/games/update/".strval($gid);
+
+        $result = self::CurlApiRequest($url, $params, true, true, true);
+        $result["response"] = self::TranslateItunesIdToAppId_Singleton($result["response"]);
+
+        return $result;
+    }
+
+    /*
+    */
+    static private function BuildUrlQuery($base_url, $params, $sign=false)
+    {
+        ksort($params);
+
+        if($sign) {
+            $params['_sig'] = self::Sign($params);
+        }
+
+        $result = http_build_query($params);
+
+        return "$base_url?$result";
+    }
+
+    /*
+    */
+    static private function GetPostString($params, $sign=false)
+    {
+        ksort($params);
+
+        if($sign) {
+            $params['_sig'] = self::Sign($params);
+        }
+
+        $result = http_build_query($params);
+
+        return "$result";
+    }
+
+    /*
+    */
+    static private function Sign($request)
+    {
+        if(isset($request['_sig'])) {
+            unset($request['_sig']);
+        }
+
+        $values = array_values($request);
+        $values = implode("", $values);
+
+        $signature = hash('sha256', $values);
+        return $signature;
+    }
+
+    /*
+    */
+    static public function CurlApiRequest($url, $params, $post=false, $secure=false, $sign=false)
+    {
+
+        $ch = curl_init();
+
+        curl_setopt($ch,CURLOPT_URL, $url);
+
+        if($post) {
+
+            $data = self::GetPostString($params, $sign);
+            curl_setopt($ch,CURLOPT_POST, true);
+            curl_setopt($ch,CURLOPT_POSTFIELDS, $data);
+
+        } else {
+
+            $url = self::BuildUrlQuery($url, $params, $sign);
+
+        }
+
+        if($secure) {
+
+            curl_setopt($ch,CURLOPT_SSL_VERIFYPEER, false) ;
+
+        }
+
+        curl_setopt($ch,CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+        //execute post
+        $result = curl_exec($ch);
+
+        //close connection
+        curl_close($ch);
+
+        return json_decode($result, true);
+
+    }
+
+
+    private static function ItunesIdToAppIdNames()
+    {
+        return array(
+                array(
+                    'old' => 'itunes_id',
+                    'new' => 'appId',
+                ),
+            );
+    }
+
+
+    private static function TranslateItunesIdToAppId_List($games)
+    {
+        $new_array = array();
+        if ($games) {
+            foreach($games as $game) {
+                array_push($new_array, self::ChangeArrayFieldNames($game, self::ItunesIdToAppIdNames()));
+            }
+        }
+
+        return $new_array;
+    }
+
+
+    private static function TranslateItunesIdToAppId_Singleton($game)
+    {
+        return self::ChangeArrayFieldNames($game, self::ItunesIdToAppIdNames());
+    }
+
+
+    private static function ChangeArrayFieldNames($response, $old_vs_new_names)
+    {
+        foreach ($old_vs_new_names as $old_vs_new_name_pair) {
+            $old_name = $old_vs_new_name_pair["old"];
+            $new_name = $old_vs_new_name_pair["new"];
+
+            if (isset($response, $old_name)) {
+                $response[$new_name] = $response[$old_name];
+                unset($response[$old_name]);
+            }
+        }
+
+        return $response;
+    }
+}

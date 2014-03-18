@@ -1,0 +1,5 @@
+- I should set up some sort of automatic build after a master merge
+    - that requires a one-click build process
+    - maybe using Jenkins? or does Atlassian have something?
+- Also, in order to make the builds more informative -- and also to help developers (like me) -- we should have test suites
+- I should probably talk to Robb about this

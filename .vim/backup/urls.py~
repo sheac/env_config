@@ -1,0 +1,68 @@
+from django.conf.urls import patterns, include, url
+
+# App Routes
+urlpatterns = patterns('',
+    url(r'^home/?$', 'app.views.public.home'),
+    url(r'^login/?$', 'app.views.public.login'),
+
+    # Admin urls:
+    url(r'^admin/login/?$', 'app.views.admin.home.login'),
+    url(r'^admin/logout/?$', 'app.views.admin.home.logout'),
+
+    url(r'^admin/users/?$',              'app.views.admin.users.index'),
+    url(r'^admin/users/new/?$',          'app.views.admin.users.new'),
+    url(r'^admin/users/(?P<user_id>\d+)/?$',        'app.views.admin.users.show'),
+    url(r'^admin/users/edit/(?P<user_id>\d+)/?$',   'app.views.admin.users.edit'),
+    url(r'^admin/users/delete/(?P<user_id>\d+)/?$',  'app.views.admin.users.delete'),
+    url(r'^admin/users/password/(?P<user_id>\d+)/?$',  'app.views.admin.users.password'),
+    url(r'^admin/users/reset-password/(?P<user_id>\d+)/?$',  'app.views.admin.users.reset_password'),
+
+
+    url(r'^admin/users/(?P<user_id>\d+)/games/add/?$',        'app.views.admin.users.add_game'),
+    url(r'^admin/users/(?P<user_id>\d+)/games/remove/?$',        'app.views.admin.users.remove_game'),
+
+    print 1
+    url(r'^admin/games/?$', 'app.views.admin.games.index'),
+    print 2
+    url(r'^admin/games/new/?$',          'app.views.admin.games.new'),
+    print 3
+    url(r'^admin/games/(\d+)/?$',        'app.views.admin.games.show'),
+    print 4
+    url(r'^admin/games/edit/(?P<game_id>\d+)/?$',   'app.views.admin.games.edit'),
+    print 5
+    url(r'^admin/games/delete/(?P<game_id>\d+)/?$',  'app.views.admin.games.delete'),
+
+
+    url(r'^admin/developers/?$', 'app.views.admin.permissionsgroups.index', {'group_type':'developer'}),
+    url(r'^admin/developers/new/?$',          'app.views.admin.permissionsgroups.new', {'group_type':'developer'}),
+    url(r'^admin/developers/(\d+)/?$',        'app.views.admin.permissionsgroups.show', {'group_type':'developer'}),
+    url(r'^admin/developers/edit/(?P<group_id>\d+)/?$',   'app.views.admin.permissionsgroups.edit', {'group_type':'developer'}),
+    url(r'^admin/developers/delete/(?P<group_id>\d+)/?$',  'app.views.admin.permissionsgroups.delete', {'group_type':'developer'}),
+
+
+    url(r'^admin/publishers/?$', 'app.views.admin.permissionsgroups.index', {'group_type':'publisher'}),
+    url(r'^admin/publishers/new/?$',          'app.views.admin.permissionsgroups.new', {'group_type':'publisher'}),
+    url(r'^admin/publishers/(\d+)/?$',        'app.views.admin.permissionsgroups.show', {'group_type':'publisher'}),
+    url(r'^admin/publishers/edit/(?P<group_id>\d+)/?$',   'app.views.admin.permissionsgroups.edit', {'group_type':'publisher'}),
+    url(r'^admin/publishers/delete/(?P<group_id>\d+)/?$',  'app.views.admin.permissionsgroups.delete', {'group_type':'publisher'}),
+
+    url(r'^admin/?$', 'app.views.admin.home.home'),
+
+
+
+    # Developers API
+    # TODO what about this???
+    url(r'^/?$',  'app.views.admin.home.login'),
+
+    # Users Games API
+    url(r'^admin/usersgames/edit/(?P<usersgames_id>\d+)/?$', 'app.views.admin.usersgames.edit'),
+
+    # User counter
+    url(r'^usercounter/?$', 'app.views.usercounter.show'),
+    url(r'^usercounter/total_count?$', 'app.views.usercounter.total_users'),
+    url(r'^usercounter/excluded_count?$', 'app.views.usercounter.excluded_users'),
+
+    # Email list
+    url(r'^emaillist/fetch/?', 'app.views.emaillist.fetch_emails'),
+    url(r'^emaillist/?', 'app.views.emaillist.verify'),
+)

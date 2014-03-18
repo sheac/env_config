@@ -1,0 +1,80 @@
+# -*- coding: utf-8 -*-
+
+from ymc.lib import authentication as ApiAuthentication
+
+from ymc.model import User
+
+import unittest, json, re
+
+from django.test import TestCase
+from django.test import RequestFactory
+
+def test_cases():
+    return [
+            'test__ScrubEmailDomain',
+            'test_Build_properly_creates_username_from_email',
+    ]
+
+"""
+    UsersTestCase
+"""
+class UsersTestCase(TestCase):
+
+    def setUp(self):
+        1+1 # do nothing
+
+    def tearDown(self):
+        1+1 # do nothing
+
+    def test__ScrubEmailDomain(self):
+        print('\n========= test__ScrubEmailDomain =========\n')
+
+        predomain = 'asdf.asdf'
+        email = predomain+'@domain.com'
+        self.assertEqual(User._ScrubEmailDomain(email), predomain)
+
+        email = predomain+'@asdf@asdf.com'
+        self.assertEqual(User._ScrubEmailDomain(email), predomain)
+
+
+    def test_Build_properly_creates_username_from_email(self):
+        print('\n========= test_Build_properly_creates_username_from_email =========\n')
+        values = dict(
+            #username='sclare', # intentionally missing username
+            password='changeme',
+            email='shea@ymcnetwork.com',
+            first_name='Shea',
+            last_name='Clare',
+        )
+
+        user = User.Build(values)
+        expected_val_1 = User._ScrubEmailDomain(values['email'])
+        self.assertEqual(user.username, expected_val_1)
+
+        # save the user, so that the username will be
+        # found on subsequent checks to see if it's
+        # available
+        user.save()
+        self.assertEqual(User.objects.filter(username=expected_val_1).exists(), True)
+
+        # same as before, but different domain
+        # -- results in same username
+        values['email'] = 'shea@gmail.com'
+        user2 = User.Build(values)
+        expected_val_2 = User._ScrubEmailDomain(values['email']) + "--1"
+        self.assertEqual(user2.username, expected_val_2)
+
+        # save the user, so that the username will be
+        # found on subsequent checks to see if it's
+        # available
+        user2.save()
+        self.assertEqual(User.objects.filter(username=expected_val_2).exists(), True)
+
+        # same as before, but different domain
+        # -- results in same username
+        values['email'] = 'shea@yahoo.com'
+        user3 = User.Build(values)
+        expected_val_3 = User._ScrubEmailDomain(values['email']) + "--2"
+        self.assertEqual(user3.username, expected_val_3)
+
+        print("\n\n\n\n\n")

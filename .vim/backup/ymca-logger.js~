@@ -1,0 +1,142 @@
+var winston = require('winston'),
+    _       = require('underscore'),
+    path    = require('path'),
+    fs      = require('fs');
+require('winston-loggly');
+
+var PROD_INDICATOR_FILE = 'set_as_production.txt',
+    PROD_ENV_STR = 'production',
+    DEV_ENV_STR = 'development';
+
+var LOGGLY_OPTIONS = {
+    subdomain: "ymcnetwork.com",
+    auth: {
+        username: "william@ymcnetwork.com",
+        password: "ymc123123",
+    },
+    inputToken: "cbdca9c1-87bc-405c-bee2-64749c07bcf6",
+    json: true,
+};
+
+var MAX_KEYS_IN_EVENT = 10;
+
+var LEGAL_MSG_KEYS = [
+    'msg',
+    '_message_',
+    'msg_text',
+    'msg_val',
+];
+
+(function(){
+
+    /*
+       Loggly has a restriction (150) on the number of JSON
+       keys they'll index for us. When we exceed that limit,
+       we can't view expanded new log events that are JSON.
+       This function is to reduce the number of JSON keys we use.
+    */
+    function flattenJSON(input) {
+        if (typeof input != 'object') {
+            return input;
+        }
+        var _input = _.clone(input);
+
+        if (_.keys(_input).length > MAX_KEYS_IN_EVENT) {
+            _input = JSON.stringify(_input);
+
+        } else {
+            for (var key in _input) {
+                if (typeof _input[key] === 'object') {
+                    _input[key] = JSON.stringify(_input[key]);
+                }
+            }
+        }
+        return _input;
+    }
+
+    function buildDefaultTags() {
+        var env;
+        if (process.env.NODE_ENV) {
+            env = process.env.NODE_ENV;
+        } else {
+            var parentDir = path.join(__dirname, '..');
+            var fileBasedConfigPath = path.join(parentDir, PROD_INDICATOR_FILE);
+            env = fs.existsSync(fileBasedConfigPath) ? PROD_ENV_STR : DEV_ENV_STR;
+        }
+
+        var ip;
+        var interfaces = os.networkInterfaces();
+        for (var interfaceIdx in interfaces) {
+          interfaces[interfaceIdx].forEach(function(details){
+            if (
+                    details.family == 'IPv4' &&
+                    details.address !== '127.0.0.1' &&
+                    ! details.internal
+                ) {
+                ip = 'IPv4-'+details.address; // yes, this assumes there are no external, IPv4 aliases :|
+            }
+          });
+        }
+
+        return [env, ip];
+    }
+
+    function scrubKeys(data) {
+        if (typeof data === 'object') {
+
+            // Replace 'message' key with something else. Loggly seems to not like the key 'message'
+            if (_.has(data, 'message')) {
+                var messageVal = data.message;
+                _.each(LEGAL_MSG_KEYS, function(msgKey, keyIdx, list) {
+                    if (messageVal && (!_.has(data, msgKey) || keyIdx == list.length-1)) {
+                        data = _.omit(data, msgKey);
+                        data[msgKey] = messageVal;
+                        messageVal = null;
+                    }
+                });
+            }
+        }
+        return data;
+    }
+
+    function logAtLevelWithLogger(data, level, logger) {
+        data = flattenJSON(data);
+        data = scrubKeys(data);
+
+        try {
+            logger.log(level, data);
+        } catch(err) {
+            console.error(err);
+        }
+    }
+
+    function YmcaLogger(tags) {
+        if (typeof(tags) === 'undefined' || !tags) {
+            tags = [];
+        }
+
+        if (!YmcaLogger.prototype._tags) {
+            YmcaLogger.prototype._tags = _.union(buildDefaultTags(), tags);
+        }
+
+        var options = _.clone(LOGGLY_OPTIONS); // shallow copy is OK for now
+        options.tags = _.union(YmcaLogger.prototype._tags, tags);
+        var logglyTransport = new (winston.transports.Loggly)(options);
+
+        this.loggly = new winston.Logger({transports: [logglyTransport]});
+    }
+
+    YmcaLogger.prototype.info = function(data) {
+        console.info(data);
+        logAtLevelWithLogger(data, 'info', this.loggly);
+    };
+
+    YmcaLogger.prototype.log = YmcaLogger.prototype.info;
+
+    YmcaLogger.prototype.error = function(data) {
+        console.error(data);
+        logAtLevelWithLogger(data, 'error', this.loggly);
+    };
+
+    module.exports = YmcaLogger;
+})();

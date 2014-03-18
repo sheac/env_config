@@ -1,0 +1,35 @@
+#! /bin/bash
+
+if [[ -L $0 ]]; then
+    ME=$(readlink $0)
+else
+    ME=$0
+fi
+SCRIPT_DIR=$(dirname $ME)
+
+if [[ $# -eq 0 ]]; then
+    printf "This script requires that you provide an environment name to configure with\n"
+    printf "\te.g. '$> configure_app production'\n"
+    exit 1
+fi
+
+while true; do
+    read -p "Configuring app to run in environment: '$1'. Is this correct? [Y/n] " yn
+    case $yn in
+        [Yy] ) echo "Okey dokey. Configuring with $1 env" ; break;;
+        [Nn] ) echo "Alright, then. Exiting script so you can try again"; exit 1;;
+        * ) echo "Answer 'Y' or 'n', please.";;
+    esac
+done
+
+node_env=$1
+
+(
+    printf "custom_config = {\n"
+    printf "    NODE_ENV: '${node_env}'\n"
+    printf "}\n"
+) > $SCRIPT_DIR/../ymca.conf
+
+echo "Done"
+
+exit 0;

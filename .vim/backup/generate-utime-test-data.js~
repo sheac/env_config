@@ -1,0 +1,230 @@
+var mongo = require('mongojs');
+var db = mongo.connect('192.168.1.54:27017/ymca', ['events', 'sdk_debug']);
+var async = require('async');
+var moment = require('moment-timezone');
+var crypto = require('crypto');
+
+var hash = function(obj) {
+    return crypto.createHash('md5')
+        .update(JSON.stringify(obj))
+        .update(Date().toString())
+        .digest('hex');
+}
+
+var times = [
+    moment('2013-11-01T00:00:00-0000'),
+    moment('2013-11-02T00:00:00-0000'),
+    moment('2013-11-03T00:00:00-0000'),
+    moment('2013-11-04T00:00:00-0000'),
+    moment('2013-11-05T00:00:00-0000'),
+    moment('2013-11-06T00:00:00-0000'),
+    moment('2013-11-07T00:00:00-0000'),
+    moment('2013-11-08T00:00:00-0000'),
+    moment('2013-11-09T00:00:00-0000'),
+    moment('2013-11-10T00:00:00-0000'),
+    moment('2013-11-11T00:00:00-0000'),
+    moment('2013-11-12T00:00:00-0000'),
+    moment('2013-11-13T00:00:00-0000'),
+    moment('2013-11-14T00:00:00-0000'),
+    moment('2013-11-15T00:00:00-0000'),
+    moment('2013-11-16T00:00:00-0000'),
+    moment('2013-11-17T00:00:00-0000'),
+    moment('2013-11-18T00:00:00-0000'),
+    moment('2013-11-19T00:00:00-0000'),
+    moment('2013-11-20T00:00:00-0000'),
+    moment('2013-11-21T00:00:00-0000'),
+    moment('2013-11-22T00:00:00-0000'),
+    moment('2013-11-23T00:00:00-0000'),
+    moment('2013-11-24T00:00:00-0000'),
+    moment('2013-11-25T00:00:00-0000'),
+    moment('2013-11-26T00:00:00-0000'),
+    moment('2013-11-27T00:00:00-0000'),
+    moment('2013-11-28T00:00:00-0000'),
+    moment('2013-11-29T00:00:00-0000'),
+    moment('2013-11-30T00:00:00-0000'),
+    moment('2013-12-01T00:00:00-0000'),
+    moment('2013-12-02T00:00:00-0000'),
+    moment('2013-12-03T00:00:00-0000'),
+    moment('2013-12-04T00:00:00-0000'),
+    moment('2013-12-05T00:00:00-0000'),
+    moment('2013-12-06T00:00:00-0000'),
+    moment('2013-12-07T00:00:00-0000'),
+    moment('2013-12-08T00:00:00-0000'),
+    moment('2013-12-09T00:00:00-0000'),
+    moment('2013-12-10T00:00:00-0000'),
+    moment('2013-12-11T00:00:00-0000'),
+    moment('2013-12-12T00:00:00-0000'),
+    moment('2013-12-13T00:00:00-0000'),
+    moment('2013-12-14T00:00:00-0000'),
+    moment('2013-12-15T00:00:00-0000'),
+    moment('2013-12-16T00:00:00-0000'),
+    moment('2013-12-17T00:00:00-0000'),
+    moment('2013-12-18T00:00:00-0000'),
+    moment('2013-12-19T00:00:00-0000'),
+    moment('2013-12-20T00:00:00-0000'),
+    moment('2013-12-21T00:00:00-0000'),
+    moment('2013-12-22T00:00:00-0000'),
+    moment('2013-12-23T00:00:00-0000'),
+    moment('2013-12-24T00:00:00-0000'),
+    moment('2013-12-25T00:00:00-0000'),
+    moment('2013-12-26T00:00:00-0000'),
+    moment('2013-12-27T00:00:00-0000'),
+    moment('2013-12-28T00:00:00-0000'),
+    moment('2013-12-29T00:00:00-0000'),
+    moment('2013-12-30T00:00:00-0000'),
+    moment('2013-12-31T00:00:00-0000'),
+    moment('2014-01-01T00:00:00-0000'),
+    moment('2014-01-02T00:00:00-0000'),
+    moment('2014-01-03T00:00:00-0000'),
+    moment('2014-01-04T00:00:00-0000'),
+    moment('2014-01-05T00:00:00-0000'),
+    moment('2014-01-06T00:00:00-0000'),
+    moment('2014-01-07T00:00:00-0000'),
+    moment('2014-01-08T00:00:00-0000'),
+    moment('2014-01-09T00:00:00-0000'),
+    moment('2014-01-10T00:00:00-0000'),
+    moment('2014-01-11T00:00:00-0000'),
+    moment('2014-01-12T00:00:00-0000'),
+    moment('2014-01-13T00:00:00-0000'),
+    moment('2014-01-14T00:00:00-0000'),
+    moment('2014-01-15T00:00:00-0000'),
+    moment('2014-01-16T00:00:00-0000'),
+    moment('2014-01-17T00:00:00-0000'),
+    moment('2014-01-18T00:00:00-0000'),
+    moment('2014-01-19T00:00:00-0000'),
+    moment('2014-01-20T00:00:00-0000'),
+    moment('2014-01-21T00:00:00-0000'),
+    moment('2014-01-22T00:00:00-0000'),
+    moment('2014-01-23T00:00:00-0000'),
+    moment('2014-01-24T00:00:00-0000'),
+    moment('2014-01-25T00:00:00-0000'),
+    moment('2014-01-26T00:00:00-0000'),
+    moment('2014-01-27T00:00:00-0000'),
+    moment('2014-01-28T00:00:00-0000'),
+    moment('2014-01-29T00:00:00-0000'),
+    moment('2014-01-30T00:00:00-0000'),
+    moment('2014-01-31T00:00:00-0000'),
+]
+
+var userIds = [
+    "abc123",
+    "def456",
+    "ghi789",
+]
+
+var eventTemplates = [
+    {
+        "event" : "YA0birth",
+        "properties" : {
+            "uid" : "",
+            "YA0debug" : 1,
+            "YA0ver" : "1.0.6",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "0620780141c385654d4637bac3de52a6",
+            "ip" : "96.53.37.62"
+        }
+    },
+    {
+        "event" : "YA0charge",
+        "properties" : {
+            "amount" : 99.99,
+            "currency" : "USD",
+            "YA0USD": 99.99,
+            "YA0ver" : "0.2.1",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "5998e01556d043b7bb1b1cd7327f66d7",
+            "ip" : "24.85.253.29"
+        },
+    },
+    {
+        "event" : "YA0login",
+        "properties" : {
+            "uid" : "86",
+            "YA0ver" : "0.2.2",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "",
+            "ip" : "66.11.189.187"
+        },
+    },
+    {
+        "event" : "YA0register",
+        "properties" : {
+            "uid" : "william@ymcnetwork.com",
+            "YA0ver" : "0.2.2",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "5998e01556d043b7bb1b1cd7327f66d7",
+            "ip" : "96.53.37.62"
+        },
+    },
+    {
+	"event" : "YA0session",
+        "properties" : {
+            "start" : 1373327594,
+            "end" : 1373327599,
+            "length" : 5,
+            "YA0ver" : "0.2.1",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "5998e01556d043b7bb1b1cd7327f66d7",
+            "ip" : "24.85.253.29"
+        },
+    },
+    {
+	"event" : "YA0start",
+        "properties" : {
+            "YA0ver" : "0.2.1",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "5998e01556d043b7bb1b1cd7327f66d7",
+            "ip" : "24.85.253.29"
+        },
+    },
+    {
+	"event" : "crash",
+	"properties" : {
+            "uid" : "",
+            "YA0ver" : "1.0.5",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "c6e672e461b7bc09814e3e5db56437b0",
+            "ip" : "96.53.37.62"
+        },
+    },
+]
+
+console.log("beggining:");
+async.eachSeries(eventTemplates, function(eventTemplate, eventTemplateCallback) {
+    console.log("\tusing template for event " + eventTemplate.event);
+
+    async.eachSeries(times, function(time, timesCallback) {
+        console.log("\n\t\tgiving it time: " + time.format());
+
+        async.eachSeries(userIds, function(userId, userIdsCallback) {
+
+            eventTemplate.properties['time'] = time.toDate();
+            eventTemplate.properites['distinct_id'] = userId;
+            eventTemplate._id = hash(eventTemplate);
+            //console.log("\n", JSON.stringify(eventTemplate), "\n");
+            db.events.insert(eventTemplate, function(err, doc) {
+                if (err) { throw err; }
+                console.log("added event " + doc.event +
+                    " with user id: " + userId +
+                    " and with time " + doc.properties.time);
+                userIdsCallback();
+            });
+
+        },
+        function(err) {
+            if (err) {throw err;}
+            console.log("all done the user ids for time: " + time.format());
+            timesCallback();
+        });
+
+    },
+    function(err) {
+        if (err) {throw err; }
+        console.log("all done the times for event: " + eventTemplate.event);
+        eventTemplateCallback();
+    });
+},
+    function(err) {
+        if (err) { throw err; }
+        process.exit(0);
+});

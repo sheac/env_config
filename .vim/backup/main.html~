@@ -1,0 +1,208 @@
+<div class="container" ng-controller='mainController'>
+
+    <div class="alerts">
+        <alert ng-repeat="alert in alerts" type="alert.type" close="closeAlertByIndex($index)" class="alert-msg">{{alert.msg}}</alert>
+    </div>
+
+
+
+    <div class="container" style="margin-top:30px">
+
+
+        <div class="row">
+            <div class="span2">
+                <div class="pa-sidebar well well-small">
+                    <div class="sidebar-title">
+                        <h3>{{language+'.dashboard.metrics_sidebar.title' | translate}}</h3>
+                        <div class="dropdown pull-right">
+
+                            <button id="dashboard_dropdown" class="btn dropdown-toggle">
+                                <i class="fa fa-bars"></i>
+                            </button>
+
+                            <ul class="dropdown-menu">
+
+                                <li>
+                                    <span>{{language+'.collections.collection' | translate}}</span>
+                                </li>
+                                <li ng-class="{active: collection == 'events'}">
+                                    <a ng-click="setCollection('events')">{{language+'.collections.events' | translate}}</a>
+                                </li>
+                                <li ng-class="{active: collection == 'sdk_debug'}">
+                                    <a ng-click="setCollection('sdk_debug')">{{language+'.collections.sdk_debug' | translate}}</a>
+                                </li>
+
+                                <hr/>
+
+                                <li class="dropdown-menu-list">
+                                    <span class="maven_pro">{{language+'.language' | translate}}</span>
+                                </li>
+                                <li ng-class="{active: language == 'EN'}">
+                                    <a ng-click="setLanguage('EN')">{{'EN.english' | translate}}</a>
+                                </li>
+                                <li ng-class="{active: language == 'ZH'}">
+                                    <a ng-click="setLanguage('ZH')">{{'ZH.chinese' | translate}}</a>
+                                </li>
+
+                                <hr/>
+
+                                <li class="dropdown-menu-list">
+                                    <span>{{language+'.timezone' | translate}}</span>
+                                </li>
+                                <li ng-class="{active: timezone == 'GMT'}">
+                                    <a ng-click="setTimezone('GMT')">{{language+'.gmt' | translate}}</a>
+                                </li>
+                                <li ng-class="{active: timezone == 'pacific'}">
+                                    <a ng-click="setTimezone('pacific')">{{language+'.pacific' | translate}}</a>
+                                </li>
+
+                                <hr ng-show="!isViaIFrame"/>
+
+                                <li class="dropdown-submenu" ng-show="!IsViaIFrame">
+                                <a href="#">{{language+'.games' | translate}}</a>
+                                    <ul class="games-subdropdown dropdown-menu" ng-controller="gameSelectorController">
+                                        <li ng-repeat="game in gameList">
+                                            <a ng-click="selectGame($index)">{{game.title}}</a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <hr/>
+
+                                <li>
+                                    <a>{{language+'.dashboard.header.logout_button' | translate}}</button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="clearfix"></div>
+
+                    <div id="sidebar-revenue">
+                        <ul class="nav nav-list bs-docs-sidenav">
+                            <li id="revenue_special" class="nav-header maven_pro sidebar-padding-top">{{language+'.dashboard.metrics_sidebar.revenue' | translate}}</li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.revenue') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showRevenue()">{{language+'.dashboard.metrics_sidebar.revenue' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon white-icon" ng-click="openInfoModal('revenue')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.arpu') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showArpu()">{{language+'.dashboard.metrics_sidebar.arpu' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon white-icon" ng-click="openInfoModal('arpu')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.arppu') }">
+                                <a href="" class="sidebar-subheading-padding sidebar-padding-bottom">
+                                    <span class="roboto" ng-click="showArppu()">{{language+'.dashboard.metrics_sidebar.arppu' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon white-icon" ng-click="openInfoModal('arppu')"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+
+                    <div id="sidebar-user">
+                        <ul class="nav nav-list bs-docs-sidenav">
+                            <li class="nav-header maven_pro sidebar-padding-top">{{language+'.dashboard.metrics_sidebar.user' | translate}}</li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.first_launches') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showFirstLaunches()">{{language+'.dashboard.metrics_sidebar.first_launches' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('first_launches')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.user_start') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showUserStart()">{{language+'.dashboard.metrics_sidebar.dau_wau_mau' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('user_start')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.user_register') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" g-click="showUserRegister()">{{language+'.dashboard.metrics_sidebar.ymc_registers' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('user_register')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.all_users') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showAllUsers()">{{language+'.dashboard.metrics_sidebar.ymc_logins' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('all_users')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.all_buyers') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showAllBuyers()">{{language+'.dashboard.metrics_sidebar.all_buyers' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('all_buyers')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.new_buyers') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showNewBuyers()">{{language+'.dashboard.metrics_sidebar.new_buyers' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('new_buyers')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.repeated_buyers') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showRepeatedBuyers()">{{language+'.dashboard.metrics_sidebar.repeat_buyers' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('repeated_buyers')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.retention') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showRetention()">{{language+'.dashboard.metrics_sidebar.ymc_retention' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('retention')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.retention2') }">
+                                <a href="" class="sidebar-subheading-padding sidebar-padding-bottom">
+                                    <span class="roboto" ng-click="showRetention2()">{{language+'.dashboard.metrics_sidebar.retention' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('retention2')"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div id="sidebar-session">
+                        <ul class="nav nav-list bs-docs-sidenav">
+                            <li class="nav-header maven_pro sidebar-padding-top">{{language+'.dashboard.metrics_sidebar.session' | translate}}</li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.session_length') }">
+                                <a href="" class="sidebar-subheading-padding sidebar-padding-bottom">
+                                    <span class="roboto" ng-click="showSessionLength()">{{language+'.dashboard.metrics_sidebar.session_length' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('session_length')"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div id="sidebar-tools">
+                        <ul class="nav nav-list bs-docs-sidenav">
+                            <li class="nav-header maven_pro sidebar-padding-top">{{language+'.dashboard.metrics_sidebar.tools' | translate}}</li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.sdk_debug') }">
+                                <a href="" class="sidebar-subheading-padding">
+                                    <span class="roboto" ng-click="showSDKDebug()">{{language+'.dashboard.metrics_sidebar.sdk_debug' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('sdk_debug')"></i>
+                                </a>
+                            </li>
+                            <li class="nav-row" ng-class="{ active: $state.includes('main.crash') }">
+                                <a href="" class="sidebar-subheading-padding sidebar-padding-bottom">
+                                    <span class="roboto" ng-click="showCrash()">{{language+'.dashboard.metrics_sidebar.crashes' | translate}}</span>
+                                    <i class="fa fa-question-circle info-icon" ng-click="openInfoModal('crash')"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="span10 row" cg-busy="'pizza'">
+                <!--
+                  <div id="chart-title-bg">
+
+                  </div>
+                -->
+                <div class="well" ui-view="viewChart"></div>
+            </div>
+        </div>
+    </div>
+
+</div>

@@ -1,0 +1,422 @@
+# -*- coding: utf-8 -*-
+
+from ymc.lib import authentication as ApiAuthentication
+
+from ymc.model import User
+from ymc.model import Game
+from ymc.model import Developer
+from ymc.model import Publisher
+from ymc.model import UsersGames
+
+from django.test.client import Client
+from django.forms.models import model_to_dict
+
+import datetime
+import calendar
+from django.utils.timezone import utc
+import unittest, json, re
+
+from django.test import TestCase
+from django.test import RequestFactory
+
+from api.views import games as ApiGamesView
+
+def test_cases():
+    return [
+            'test_update_success',
+            'test_update_failure',
+            'test_delete_game_success',
+            'test_delete_game_failure',
+    ]
+
+"""
+    GamesTestCase
+"""
+class GamesViewTestCase(TestCase):
+
+    API_FAIL = 0
+    API_SUCCESS = 1
+
+    """
+    # Build up a game object
+    """
+    def setUp(self):
+
+        values = dict(
+            username='stindill',
+            password='changeme',
+            email='scott@ymcnetwork.com',
+            first_name='Scott',
+            last_name='Tindill',
+        )
+        self.user = User.Build(values)
+        self.user.GenerateForgotPasswordToken()
+        self.user.login()
+
+        values = dict(
+            name='YMC',
+        );
+        self.developer = Developer.Build(values)
+        self.developer.save()
+
+        values = dict(
+            name='YMC PUB',
+        );
+        self.publisher = Publisher.Build(values)
+        self.publisher.save()
+
+        values = dict(
+            title='test',
+            developer_id = self.developer.id,
+            publisher_id = self.publisher.id,
+            ymc_id='77777777777777777777777',
+        )
+        self.games = Game.Build(values)
+        self.games.save()
+
+        values = dict(
+            title='test allow login no register',
+            developer_id = self.developer.id,
+            publisher_id = self.publisher.id,
+            ymc_id='99999999999999999999999',
+            itunes_id='initial_id',
+            allow_unregistered_login=True,
+        )
+        self.games_noreg = Game.Build(values)
+        self.games_noreg.save()
+
+        self.request_factory = RequestFactory()
+
+
+    """
+    # Not sure what to do here
+    """
+    def tearDown(self):
+        self.user = None
+
+    """
+    # Tests signature generation
+    """
+    def test_update_success(self):
+        print('\n========= test_update_success =========\n')
+
+        client = Client()
+
+        self.user.developer = self.games.developer
+        self.user.save()
+
+        print "\n1. no updates"
+
+        old_vals = model_to_dict(self.games)
+        game_update_data = {
+                'uid':self.user.id,
+                'token':self.user.access_token,
+            }
+        game_update_data['_sig'] = ApiAuthentication.Sign(game_update_data)
+
+        url = '/api/games/update/'+str(self.games.ymc_id)
+        response = client.post(url, data = game_update_data, **{'wsgi.url_scheme': 'https'})
+
+        json_response = json.loads(response.content)
+        print json_response
+
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+        updated_game = Game.objects.get(id=self.games.id)
+        self.assertEqual(old_vals, model_to_dict(updated_game))
+
+        print "\n2. itunes_id only"
+
+        game_update_data = {
+                'uid':self.user.id,
+                'token':self.user.access_token,
+                'itunes_id':'new_itunes_id',
+            }
+        game_update_data['_sig'] = ApiAuthentication.Sign(game_update_data)
+
+        old_vals = model_to_dict(updated_game)
+        old_vals['itunes_id'] = game_update_data['itunes_id']
+
+        url = '/api/games/update/'+str(self.games.ymc_id)
+        response = client.post(url, data = game_update_data, **{'wsgi.url_scheme': 'https'})
+
+        json_response = json.loads(response.content)
+
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+        self.assertEqual(json_response["response"]["itunes_id"], game_update_data['itunes_id'])
+        updated_game = Game.objects.get(id=self.games.id)
+        self.assertEqual(old_vals, model_to_dict(updated_game))
+
+        print "\n3. update publisher id"
+
+        self.user.is_admin = True
+        self.user.save()
+
+        game_update_data = {
+                'uid':self.user.id,
+                'token':self.user.access_token,
+                'publisher_id': self.publisher.id,
+            }
+        game_update_data['_sig'] = ApiAuthentication.Sign(game_update_data)
+
+        old_vals = model_to_dict(updated_game)
+        old_vals['publisher'] = self.publisher.id
+
+        url = '/api/games/update/'+str(self.games.ymc_id)
+        response = client.post(url, data = game_update_data, **{'wsgi.url_scheme': 'https'})
+
+        json_response = json.loads(response.content)
+
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+        self.assertEqual(json_response["response"]["publisher_id"], game_update_data['publisher_id'])
+        updated_game = Game.objects.get(id=self.games.id)
+        self.assertEqual(old_vals, model_to_dict(updated_game))
+
+        print "\n4. set developer id to None"
+
+        self.user.is_admin = True
+        self.user.save()
+
+        game_update_data = {
+                'uid':self.user.id,
+                'token':self.user.access_token,
+                'developer_id': '',
+            }
+        game_update_data['_sig'] = ApiAuthentication.Sign(game_update_data)
+
+        old_vals = model_to_dict(updated_game)
+        old_vals['developer'] = None
+
+        url = '/api/games/update/'+str(self.games.ymc_id)
+        response = client.post(url, data = game_update_data, **{'wsgi.url_scheme': 'https'})
+
+        json_response = json.loads(response.content)
+
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+        self.assertNotIn('developer_id', json_response["response"].keys())
+        updated_game = Game.objects.get(id=self.games.id)
+        self.assertEqual(old_vals, model_to_dict(updated_game))
+
+
+
+    """
+    # Tests signature generation
+    """
+    def test_update_failure(self):
+        print('\n========= test_update_failure =========\n')
+
+        client = Client()
+
+        new_pub = Publisher.Build({'name': 'Test Pub 2'})
+        new_pub.save()
+        new_dev = Developer.Build({'name': 'Test Dev 2'})
+        new_dev.save()
+
+        cases = [
+                {'name': 'auth failure', 'message': 'Failed to authenticate', 'gid': str(self.games.ymc_id),
+                    'data': {
+                            'uid': 999999,
+                            'token': self.user.access_token,
+                        },
+                },
+                {'name': 'game not found', 'message': 'Game not found', 'gid': str(9999999),
+                    'data': {
+                            'uid': self.user.id,
+                            'token': self.user.access_token,
+                        },
+                },
+                {'name': 'non-admin attempt to set dev/pub id', 'message': 'Non admins may not set publisher_id or developer_id', 'gid': str(self.games.ymc_id),
+                    'set_no_admin': True,
+                    'data': {
+                            'uid': self.user.id,
+                            'token': self.user.access_token,
+                            'publisher_id': self.publisher.id,
+                        },
+                },
+                {'name': 'user isn\'t pub or dev for that game', 'message': 'Access denied', 'gid': str(self.games.ymc_id),
+                    'set_no_admin': True,
+                    'set_diff_pub_dev': True,
+                    'data': {
+                            'uid':self.user.id,
+                            'token':self.user.access_token,
+                        },
+                },
+                {'name': 'game has no pub or dev', 'message': 'Access denied', 'gid': str(self.games.ymc_id),
+                    'set_no_admin': True,
+                    'game_no_pub_dev': True,
+                    'data': {
+                            'uid':self.user.id,
+                            'token':self.user.access_token,
+                        },
+                },
+            ]
+
+
+        for idx, case in enumerate(cases):
+            if ('set_no_admin' in case.keys()):
+                self.user.is_admin = False
+            else:
+                self.user.is_admin = True
+            if ('set_diff_pub_dev' in case.keys()):
+                self.user.publisher = new_pub
+                self.user.developer = new_dev
+            else:
+                self.user.publisher = self.publisher
+                self.user.developer = self.developer
+            self.user.save()
+
+            if ('game_no_pub_dev' in case.keys()):
+                self.games.publisher = None
+                self.games.developer = None
+            self.games.save()
+
+            old_vals = model_to_dict(self.games)
+
+            print str(idx+1) + ". " + case['name']
+            case['data']['_sig'] = ApiAuthentication.Sign(case['data'])
+            url = '/api/games/update/'+case['gid']
+            response = client.post(url, data = case['data'], **{'wsgi.url_scheme': 'https'})
+            json_response = json.loads(response.content)
+            self.assertEqual(json_response["status"], self.API_FAIL)
+            self.assertEqual(json_response['message'], case['message'])
+            updated_game = Game.objects.get(id=self.games.id)
+            self.assertEqual(old_vals, model_to_dict(updated_game))
+
+
+
+
+
+
+
+    """
+        *****************************************
+        ************* delete_game ***************
+        *****************************************
+    """
+
+
+
+
+    def test_delete_game_success(self):
+        print('\n========== test_delete_game_success ==========\n')
+
+        client = Client()
+
+        self.user.is_admin = True
+        self.user.save()
+
+        initial_num_games = Game.objects.count()
+        self.assertEqual(Game.objects.count(), initial_num_games)
+
+        req_data = {
+                'gid'   : self.games.ymc_id,
+                'uid'   : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/admin/games/delete/'+str(req_data['gid'])
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        self.assertEqual(res_json['response']['game']['ymc_id'], self.games.ymc_id)
+        self.assertEqual(Game.objects.count(), (initial_num_games - 1))
+
+        # rebuild game after deletion (if we got this far, it's been deleted)
+        values = dict(
+            title='test',
+            developer_id = self.developer.id,
+            publisher_id = self.publisher.id,
+            ymc_id='77777777777777777777777',
+        )
+        self.games = Game.Build(values)
+        self.games.save()
+
+
+    def test_delete_game_failure(self):
+        print('\n========== test_delete_game_failure ==========\n')
+
+        client = Client()
+
+        req_data = {
+                'uid'   : self.user.id,
+                'token' : self.user.access_token,
+            }
+        cases = [
+                {'name': 'bad token', 'message': 'Failed to authenticate admin user',
+                    'data': {
+                            'uid'   : self.user.id,
+                            'token' : 'bad_token',
+                            'gid'   : self.games.ymc_id,
+                        }
+                },
+                {'name': 'bad uid', 'message': 'Failed to authenticate admin user',
+                    'data': {
+                            'uid'   : 9999999,
+                            'token' : self.user.access_token,
+                            'gid'   : self.games.ymc_id,
+                        }
+                },
+                {'name': 'not admin', 'not_admin': True, 'message': 'Failed to authenticate admin user',
+                    'data': {
+                            'uid'   : self.user.id,
+                            'token' : self.user.access_token,
+                            'gid'   : self.games.ymc_id,
+                        }
+                },
+                {'name': 'game not found', 'message': 'Game not found',
+                    'data': {
+                            'uid'   : self.user.id,
+                            'token' : self.user.access_token,
+                            'gid'   : 'bad_gid',
+                        }
+                }
+            ]
+
+        for idx, case in enumerate(cases):
+            print str(idx+1) + ". " + case['name']
+            case['data']['_sig'] = ApiAuthentication.Sign(case['data'])
+            url = '/api/admin/games/delete/'+str(case['data']['gid'])
+            if ('not_admin' in case.keys()):
+                self.user.is_admin = False
+            else:
+                self.user.is_admin = True
+            self.user.save()
+            res = client.post(url, data=case['data'], **{'wsgi.url_scheme':'https'})
+            res_json = json.loads(res.content);
+            self.assertEqual(res_json['status'], self.API_FAIL)
+            self.assertEqual(res_json['message'], case['message'])
+
+
+    def test_delete_game_failure_game_not_found_typed(self, group):
+        print('\n========== test_delete_game_failure_game_not_found_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        bad_gid = 11111111111
+        req_data = {
+                'did'   : group['obj'].id,
+                'gid'   : bad_gid,
+                'uid'   : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+
+
+
+
+
+
+
+
+
+
+
+
+        print("\n\n\n\n\n")

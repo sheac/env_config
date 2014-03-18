@@ -1,0 +1,6 @@
+<?php echo View::factory('shared/meta') ?>
+<div id="wrap">
+    <?php echo View::factory('shared/header') ?>  
+    <?php echo $content ?>  
+</div>
+<?php echo View::factory('shared/footer') ?>

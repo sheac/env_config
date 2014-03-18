@@ -1,0 +1,87 @@
+from django.db import models
+from django.db.models import Q
+
+from django.core import validators
+from django.core.validators import RegexValidator, MaxLengthValidator
+
+from django.utils.timezone import utc
+import hashlib, datetime, uuid
+
+from ymc.lib import httprequest
+from ymc_platform import settings
+
+"""
+    Game model
+"""
+class Game(models.Model):
+
+    # Field List
+    title = models.CharField(max_length=255, null=False, blank=False)
+
+    ymc_id = models.CharField(max_length=128, null=False, blank=False, unique=True)
+
+    itunes_id = models.CharField(max_length=255, validators=[
+            RegexValidator('^[^\*\s]*$', 'App Id format is invalid'),
+            MaxLengthValidator(255),
+        ],
+        null=True, blank=True, unique=False)
+
+    created_at = models.DateTimeField(null=True)
+
+    developer = models.ForeignKey('ymc.Developer', blank=True, null=True, default=None, on_delete=models.SET_NULL)
+    publisher = models.ForeignKey('ymc.Publisher', blank=True, null=True, default=None, on_delete=models.SET_NULL)
+
+    rating = models.IntegerField(default=0, blank=True, null=True)
+    platform = models.IntegerField(default=0, blank=True, null=True)
+
+    mp_token = models.CharField(max_length=128, null=True, blank=True)
+    mp_key = models.CharField(max_length=128, null=True, blank=True)
+    mp_secret = models.CharField(max_length=128, null=True, blank=True)
+
+    allow_unregistered_login =  models.BooleanField(default=False, null=False, blank=False)
+
+    reset_password_base_address = models.CharField(max_length=255, null=True, blank=True, default=None)
+
+    class Meta:
+        db_table = 'games'
+        app_label = 'ymc'
+
+    @staticmethod
+    def Build(values):
+        game = Game(**values)
+
+        if(not game.ymc_id):
+            game.ymc_id = uuid.uuid1().hex
+
+        game.created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+
+        return game
+
+    @staticmethod
+    def SyncAnalytics():
+        for ymca_url in settings.YMC_ANALYTICS_SERVER_SYNC_URLS:
+            print "Updating "+ymca_url
+            httprequest.send(url=ymca_url)
+            print "Done updating "+ymca_url+"\n\n"
+
+    @staticmethod
+    def GetGamesInfo(group):
+
+        results = group.filter_games_query_set_by_own_id(Game.objects).values(
+                    "created_at",
+                    "rating",
+                    "developer_id",
+                    "publisher_id",
+                    "title",
+                    "ymc_id",
+                    "itunes_id"
+                )
+
+        games = []
+        for game in results:
+            games.append(game)
+
+        return games
+
+
+

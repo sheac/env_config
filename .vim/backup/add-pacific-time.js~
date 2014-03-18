@@ -1,0 +1,113 @@
+var mongo = require('mongojs');
+var async = require('async');
+var moment = require('moment-timezone');
+
+var addPacificTimeToCollection = function(collection, gameId, topCallback) {
+
+    var _id2PacTimeList = [];
+
+    var errorHandler = function(err) {
+        if (typeof topCallback !== "undefined") {
+            topCallback(err);
+        } else {
+            throw err;
+        }
+    }
+
+    async.series({
+
+        populate_id2PacTime: function(callback) {
+
+            var queryHash = (gameId && typeof gameId !== "undefined") ?
+                                {"properties.YA0token": gameId, "properties.time_pacific": {$exists: false}} :
+                                {"properties.time_pacific": {$exists: false}};
+                                
+            collection.find(queryHash).forEach(function(err, doc) {
+                if (err) { return errorHandler(err); }
+
+                if (!!doc) {
+                    var time = moment(doc.properties.time);
+                    var hoursToSubtract = 8;
+                    if (time.isDST()) {
+                        hoursToSubtract += 1;
+                    }
+                    var pacTime = time.subtract('hours', hoursToSubtract);
+                    _id2PacTimeList.push({_id: doc._id, pacTime: pacTime.toDate()});
+                } else {
+                    console.log("calling populate_id2PacTime callback");
+                    return callback();
+                }
+            });
+        },
+
+        addPacTimeToAll: function(callback) {
+            async.each(_id2PacTimeList, function(_id2PacTimeMap, eachCallback){
+                var _id         = _id2PacTimeMap['_id'],
+                    pacTime     = _id2PacTimeMap['pacTime'];
+
+                var updateHash = !!pacTime ?
+                        {$set: {"properties.time_pacific": pacTime}} :
+                        {
+                            $set: {
+                                "properties.time_pacific": 0,
+                                event: "YA0charge_X"
+                            },
+                            $addToSet: {"properties.YA0error": "time_pacific"}
+                        };
+                                    
+                collection.findAndModify({
+                    query: {_id: _id},
+                    update: updateHash,
+                }, function(err, doc) {
+                    if (err) {return errorHandler(err); }
+                    eachCallback();
+                });
+            },
+            function(err){
+                if (err) { return errorHandler(err); }
+
+                console.log("calling addPacTimeToAll callback");
+                callback();
+            });
+        },
+    },
+        
+    function(err) {
+        if (err) { return errorHandler(err); }
+
+        if (topCallback && typeof topCallback !== "undefined") {
+            topCallback();
+        }
+    });
+}
+
+
+if (require.main === module) {
+    var events = require('../../reporter/database.js').eventCollection;
+    var sdkDebug = require('../../reporter/database.js').sdkDebugCollection;
+
+    var callback1 = function() {
+        console.log("finished updating a collection");
+    }
+    var callback2 = function() {
+        console.log("finished updating a collection");
+        process.exit(0);
+    }
+
+    async.series({
+        addToEvents: function(callback) {
+            addPacificTimeToCollection(events, null, callback);
+        },
+        addToSdkDebug: function(callback) {
+            addPacificTimeToCollection(sdkDebug, null, callback);
+        },
+    },
+    function(err) {
+        if (err) { throw err; }
+
+        process.exit(0);
+    });
+} else {
+    exports.addPacificTimeToCollection = addPacificTimeToCollection;
+}
+

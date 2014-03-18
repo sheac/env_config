@@ -1,0 +1,116 @@
+var currencyConversion = require('./curr-convert.js');
+var async = require('async');
+
+var addCurrencyToCollection = function(collection, gameId, newCurrency, newPropertyName, topCallback) {
+
+    var _id2currencyMaps = [];
+
+    var errorHandler = function(err) {
+        if (typeof topCallback !== "undefined") {
+            topCallback(err);
+        } else {
+            throw err;
+        }
+    }
+
+    async.series({
+
+        populate_id2currency: function(callback) {
+
+            var queryHash = (gameId && typeof gameId !== "undefined") ?
+                                {event: {$in: ["YA0charge", "YA0charge_X"]}, "properties.YA0token": gameId} :
+                                {event: {$in: ["YA0charge", "YA0charge_X"]}};
+                                
+            collection.find(queryHash).forEach(function(err, doc) {
+                if (err) { return errorHandler(err); }
+
+                if (!!doc) {
+                    var oldCurrency = doc.properties.currency,
+                        amt         = doc.properties.amount;
+                    var currency = null;
+                    try {
+                        currency = currencyConversion.toCurrencyRevenue(amt, oldCurrency, newCurrency);
+                    } catch (err) {
+                        console.error("ERROR: Unable to find", newCurrency, "for amt =", amt, "and currency =", oldCurrency);
+                    }
+                    _id2currencyMaps.push({_id: doc._id, currency: currency});
+                } else {
+                    console.log("calling populate_id2currency callback");
+                    return callback();
+                }
+            });
+        },
+
+        addCurrencyToAll: function(callback) {
+            async.each(_id2currencyMaps, function(_id2currencyMap, eachCallback){
+                var _id         = _id2currencyMap['_id'],
+                    currency    = _id2currencyMap['currency'];
+
+                var updateHash = {$set: {}};
+                if (!!currency) {
+                    updateHash['$set'][newPropertyName] = currency;
+                    updateHash['$set']['event'] = 'YA0charge';
+                    updateHash['$pull'] = {'properties.YA0error': newPropertyName};
+                } else {
+                    updateHash['$set'][newPropertyName] = 0;
+                    updateHash['$set']['event'] = 'YA0charge_X';
+                    updateHash['$addToSet'] = {"properties.YA0error": newPropertyName};
+                }
+                                    
+                collection.findAndModify({
+                    query: {_id: _id},
+                    update: updateHash,
+                }, function(err, doc) {
+                    if (err) {return errorHandler(err); }
+                    eachCallback();
+                });
+            },
+            function(err){
+                if (err) { return errorHandler(err); }
+
+                console.log("calling addCurrencyToAll callback");
+                callback();
+            });
+        },
+    },
+        
+    function(err) {
+        if (err) { return errorHandler(err); }
+
+        console.log("Finished processing collection:", collection._name);
+        if (topCallback && typeof topCallback !== "undefined") {
+            topCallback();
+        }
+    });
+}
+
+var addUsdToCollection = function(collection, ya0token, callback) {
+    return addCurrencyToCollection(collection, ya0token, 'USD', 'properties.YA0USD', callback);
+}
+
+if (require.main === module) {
+    var events = require('../../reporter/database.js').eventCollection;
+    var sdkDebug = require('../../reporter/database.js').sdkDebugCollection;
+
+    currencyConversion.initialize(function() {
+        async.series({
+            processEvents: function(callback) {
+                addUsdToCollection(events, null, callback);
+            },
+            processSdkDebug: function(callback) {
+                addUsdToCollection(sdkDebug, null, callback);
+            }
+        },
+        function(err) {
+            if (err) {throw err;}
+            process.exit(0);
+        });
+    });
+
+} else {
+    currencyConversion.initialize(function() {
+        exports.addUsdToCollection = addUsdToCollection;
+        exports.addCurrencyToCollection = addCurrencyToCollection;
+    });
+}
+

@@ -1,0 +1,15 @@
+from ymc.model.permissionsgroups import PermissionsGroup
+
+
+"""
+    SubclassDeveloper model
+"""
+class SubclassDeveloper(PermissionsGroup):
+
+    class Meta:
+        db_table = 'subclassdevelopers'
+        app_label = 'ymc'
+
+    def filter_games_query_set_by_own_id(self, games_qs):
+        return games_qs.filter(developer_id=self.id)
+

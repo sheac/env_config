@@ -1,0 +1,340 @@
+var moment = require('moment');
+var _ = require('underscore');
+var strftime = require('strftime');
+var strftimeUTC = strftime.strftimeUTC;
+
+var YmcaLogger = require('../../tools/logging/ymca-logger'),
+    ymcaLogger = new YmcaLogger(['Aggregation-TimeFunctionality']);
+
+var gmt2Pacific = function gmt2Pacific(gmt) {
+    if (!gmt.hasOwnProperty('_isAMomentObject') || !gmt._isAMomentObject) {
+        try {
+            gmt = moment(gmt);
+        }
+        catch(err) {
+            ymcaLogger.error(err);
+            return null;
+        }
+    }
+    var hoursToSubtract = gmt.isDST() ? 7 : 8;
+    return gmt.subtract('hours', hoursToSubtract);
+}
+exports.gmt2Pacific = gmt2Pacific;
+
+/**
+ * Date method difference !!!
+ *
+ * Mongodb:
+ *      $dayOfYear  1 ~ 366
+ *      $week       0 ~ 53
+ *      $month      1 ~ 12
+ *
+ * Moment:
+ *      dayOfYear   1 ~ 366
+ *      week        1 ~ 54
+ *      month       0 ~ 11
+ *
+ */
+
+exports.getTimePoint = {
+
+    day:function(firstTime,lastTime, timezone){
+        var span = 30
+        var err = null
+        var isPacific = (timezone == 'pacific');
+
+        if (!lastTime) {
+//            lastTime = new Date();
+            lastTime = isPacific ? gmt2Pacific(moment()) : moment();
+            lastTime = moment(lastTime.utc().format("M D YYYY")+"Z");     // UTC 00:00
+            lastTime = moment(lastTime).add('days',1)
+        }
+        if (!firstTime) {
+//            firstTime = new Date(moment(lastTime).subtract('days',span).format('M D YYYY'))
+            firstTime = moment(lastTime).subtract('days',span)
+        }
+
+        //TODO: if time span is too large, return error
+
+        var joinTime = moment(firstTime).add('days',1)
+//        var returnTime = new Date(moment(firstTime).add('days',2).format('M D YYYY'))
+
+        var timeFieldName = isPacific ? '$properties.time_pacific' : '$properties.time';
+
+//        var group = {indexOfTime:{$dayOfYear : "$properties.time"},userid: "$properties.distinct_id"};
+        var group = {
+            year:{$year: timeFieldName},
+            indexOfTime:{$dayOfYear: timeFieldName},
+            userid: "$properties.distinct_id"
+        }
+        var result ={
+            from_time   :new Date(firstTime),
+            to_time     :new Date(lastTime),
+            join_time   :new Date(joinTime),
+            group       :group,
+            error       :err
+        }
+        return result
+    },
+
+    week:function(firstTime,lastTime, timezone){
+        var span = 24
+        var err = null
+        var isPacific = (timezone == 'pacific');
+
+        if (!lastTime) {
+            // Get the monday's date
+//            lastTime = new Date()
+            var now = isPacific ? gmt2Pacific(moment()) : moment();
+            now.utc();
+            lastTime = moment(now.format("M D YYYY")+"Z");     // UTC 00:00
+            var day = now.day()
+            lastTime = moment(lastTime).subtract('days',day).format()
+            // before next monday
+            lastTime = moment(lastTime).add('weeks',1)
+        }
+        if (!firstTime) {
+            firstTime = new Date(moment(lastTime).utc().subtract('weeks',span).format('M D YYYY')+"Z")
+        }
+//        if(firstTime && lastTime){
+//
+//        } else {
+//            lastTime = new Date()
+//            firstTime = new Date(moment(lastTime).subtract('weeks',span).format('M D YYYY'))
+//        }
+
+        var joinTime = new Date(moment(firstTime).add('weeks',1).format('M D YYYY')+"Z")
+//        var returnTime = new Date(moment(firstTime).add('weeks',2).format('M D YYYY'))
+
+        var timeFieldName = isPacific ? '$properties.time_pacific' : '$properties.time';
+
+//        var group = {indexOfTime:{$week : "$properties.time"},userid: "$properties.distinct_id"}
+        var group = {
+            year:{$year: timeFieldName},
+            indexOfTime:{$week: timeFieldName},
+            userid: "$properties.distinct_id"
+        }
+
+        ymcaLogger.log({
+            action: 'getTimePoint',
+            firstTime: moment(firstTime).utc().format() + " " + moment(firstTime).utc().format("ddd"),
+            lastTime: moment(lastTime).utc().format() + " " + moment(lastTime).utc().format("ddd"),
+        });
+
+        var result ={
+            from_time   :new Date(firstTime),
+            to_time     :new Date(lastTime),
+            join_time   :new Date(joinTime),
+            group       :group,
+            error       :err
+        }
+
+        return result
+    },
+
+    month:function(firstTime,lastTime, timezone){
+        var span = 12
+        var err = null
+        var isPacific = (timezone == 'pacific');
+
+        if (!lastTime) {
+            var now = isPacific ? gmt2Pacific(moment()) : moment();
+            now.utc();
+            lastTime = moment(now.format("M D YYYY")+"Z");     // UTC 00:00
+            var date = now.date()
+            lastTime = moment(lastTime).subtract('days',date).format()
+            lastTime = moment(lastTime).add('months',1)
+        }
+        if (!firstTime) {
+            firstTime = new Date(moment(lastTime).utc().subtract('months',span).format('M D YYYY')+"Z")
+        }
+//        if(firstTime && lastTime){
+//
+//        } else {
+//            lastTime = new Date()
+//            firstTime = new Date(moment(lastTime).subtract('months',span).format('M D YYYY'))
+//        }
+
+        var joinTime = new Date(moment(firstTime).add('months',1).format('M D YYYY')+"Z")
+//        var returnTime = new Date(moment(firstTime).add('months',2).format('M D YYYY'))
+
+        var timeFieldName = isPacific ? '$properties.time_pacific' : '$properties.time';
+
+//        var group = {indexOfTime:{$month : "$properties.time"},userid: "$properties.distinct_id"};
+        var group = {
+            year:{$year: timeFieldName},
+            indexOfTime:{$month: timeFieldName},
+            userid: "$properties.distinct_id"
+        }
+        var result ={
+            from_time   :new Date(firstTime),
+            to_time     :new Date(lastTime),
+            join_time   :new Date(joinTime),
+            group       :group,
+            error       :err
+        }
+
+        return result
+    }
+
+}
+
+var weeksInYearObj = {};
+var weeksInYear = function weeksInYear(year) {
+    var cachedValue = weeksInYearObj[year.toString()];
+    if (cachedValue) {
+        return cachedValue;
+    }
+
+    var lastDay = moment([year+1, 00, 01]).subtract('days', 1);
+    while (lastDay.weekYear() > year) {
+        lastDay.subtract('days', 1);
+    }
+
+    weeksInYearObj[year.toString()] = lastDay.week(); // moment weeks are 1-indexed
+    return lastDay.week();
+}
+
+var timestamp2DateStr = function timestamp2DateStr(type) {
+    return function timestamp2DateStr_inner(ts) {
+        var momentVer = moment(Number(ts)*1000);
+        momentVer.add('seconds', 1); // this is for strftime with %j if time == 00:00:00
+        var tStr;
+        switch (type) {
+            case 'day':
+                tStr = '%j';
+                break;
+            case 'week':
+                tStr = '%U';
+                break;
+            case 'month':
+                tStr = '%m';
+                break;
+        }
+        return ts.toString() + " :: " +
+            momentVer.utc().format("YYYY-MMM-D HH:mm:SS Z (ddd)") + " :: " +
+            strftimeUTC(tStr, momentVer.utc().toDate())
+    }
+}
+
+exports.fillGap = function(startTime,endTime,type,data){
+
+    ymcaLogger.log({
+        action: 'fillGap',
+        startTime_formatted: timestamp2DateStr(type)(moment(startTime).unix()),
+        endTime_formatted: timestamp2DateStr(type)(moment(endTime).unix()),
+        type: type,
+        data_in: data
+    });
+
+    var startTime = moment(startTime).utc(),
+        currTime = moment(startTime).utc(),
+        endTime = moment(endTime).utc();
+
+    var sortedSegKeys = [];
+    var unitToAdd = type+'s';
+    var isDSTUpAdjusted = false,
+        isDSTDownAdjusted = false;
+    while (currTime < endTime) {
+        if (currTime.isDST() && !startTime.isDST() && !isDSTUpAdjusted) {
+            currTime.add('hours', 1);
+            isDSTUpAdjusted = true;
+        } else if (startTime.isDST() && !currTime.isDST() && !isDSTDownAdjusted) {
+            currTime.subtract('hours', 1);
+            isDSTDownAdjusted = true;
+        }
+        sortedSegKeys.push(currTime.unix());
+        currTime.add(unitToAdd, 1);
+    }
+
+    var sampleDataPoint = _.omit(data[0]);
+    var setToZero = function setToZero(obj, key) { obj[key] = 0; return obj; }
+    var zeroDataPoint = _.reduce(_.keys(sampleDataPoint), setToZero, {});
+
+    var addZeroPoint = function addZeroPoint(obj, key) { obj[key] = _.omit(zeroDataPoint, '_id'); return obj; }
+    var segments = _.reduce(sortedSegKeys, addZeroPoint, {});
+    ymcaLogger.log({
+        action: 'fillGap',
+        segments: _.map(_.keys(segments), timestamp2DateStr(type))
+    });
+
+    aggrId2SegKeyTrie = {};
+    var addSegKeyToAggrId2SegKeyTrie = function addSegKeyToAggrId2SegKeyTrie(segKey) {
+        var momentDate = moment(Number(segKey)*1000);
+        momentDate.add('seconds', 1); // this is for strftime with %j if time == 00:00:00
+        var date = momentDate.utc().toDate();
+
+        var y = strftimeUTC('%Y', date);
+        var yearBucket = aggrId2SegKeyTrie[y];
+        if (!yearBucket) {
+            yearBucket = {};
+            aggrId2SegKeyTrie[y] = yearBucket;
+        }
+        
+        var tStr;
+        switch (type) {
+            case 'day':
+                tStr = '%j';
+                break;
+            case 'week':
+                tStr = '%U';
+                break;
+            case 'month':
+                tStr = '%m';
+                break;
+        }
+        var t = Number(strftimeUTC(tStr, date));
+        yearBucket[t] = Number(segKey);
+    }
+    _.each(_.keys(segments), addSegKeyToAggrId2SegKeyTrie);
+
+    ymcaLogger.log({
+        action: 'fillGap',
+        aggrId2SegKeyTrie: aggrId2SegKeyTrie
+    });
+
+    var findSegFromAggrId = function findSegFromAggrId(_id) {
+        var segKey = aggrId2SegKeyTrie[_id.y][_id.t];
+
+        if (!segKey) {
+            if (type != 'week') {
+                ymcaLogger.error("Could not find time segment for data _id: " + _id.toString());
+                return null;
+            }
+            ymcaLogger.log("couldn't find seg for _id: " + _id.toString());
+            var incOrDec = (_id.t == 0) ? (-1) : 1;
+            ymcaLogger.log("\tincOrDec: " + incOrDec.toString());
+            var y = _id.y + incOrDec;
+            ymcaLogger.log("y: " + y.toString());
+            var t =  (_id.t == 0) ? weeksInYear(y) : 0;
+            ymcaLogger.log("t: " + t.toString());
+            var segKey = aggrId2SegKeyTrie[y][t];
+        }
+
+        return segments[segKey];
+    }
+
+    var addDatumToSegment = function addDatumToSegment(datum) {
+        var segment = findSegFromAggrId(datum._id);
+        if (!!segment) {
+            _.each(_.without(_.keys(datum), '_id'), function(key) {
+                segment[key] += datum[key];
+            });
+        }
+    }
+    _.each(data, addDatumToSegment);
+
+    var pushTimestampIntoData = function pushTimestampIntoData(segKey) {
+        var seg = segments[segKey];
+        seg.ts = Number(segKey);
+        return seg;
+    }
+    var dataAndTimestamps = _.map(_.keys(segments), pushTimestampIntoData);
+
+    ymcaLogger.log({
+        action: 'fillGap',
+        dataAndTimestamps: dataAndTimestamps
+    });
+
+    return dataAndTimestamps
+}

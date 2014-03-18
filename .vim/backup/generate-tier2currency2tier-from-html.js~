@@ -1,0 +1,334 @@
+var jsdom   = require('jsdom');
+var path    = require('path');
+var fs      = require('fs');
+var jquery  = require('jquery');
+
+/*
+   constants
+*/
+
+var CURRENCY_ROW                = 0,
+    PRICE_DIFFERENTIATION_ROW   = 1;
+
+var TIER_COL_IDX        = 0,
+    PRICE_COL_MOD       = 1,
+    PROCEEDS_COL_MOD    = 0;
+
+var CURRENCIES_AND_CODES_CODE_IDX       = 1,
+    CURRENCIES_AND_CODES_CURRENCIES_IDX = 0;
+
+var PRICE_KEY       = 'price',
+    PROCEEDS_KEY    = 'proceeds';
+
+var NON_VALUE   = 'NON_VALUE';
+
+
+
+/*
+   init jquery and DOM
+*/
+
+// TODO un-hardcode filename
+var htmlFilePath  = path.join(__dirname, 'html-tables/tier-matrix-dec-10-2013.html'),
+    html            = fs.readFileSync(htmlFilePath, 'utf8'),
+    document        = jsdom.jsdom(html),
+    window          = document.parentWindow,
+    $               = jquery.create(window);
+
+
+
+/*
+   init data structures
+*/
+
+var currenciesAndCodes      = [],
+    tier2currency           = {},
+    currency2tier           = {},
+    possibleCurrencyVals    = {};
+
+
+
+/*
+   processing functions
+*/
+
+var formatNumberString = function(strIn) {
+    var asFloat = new Number(parseFloat(strIn));
+    var digitsAfterDecimal = 2;
+    return asFloat.toFixed(digitsAfterDecimal);
+}
+
+var processCurrencyRow = function(row) {
+    var entries = $(row).find("td");
+    entries.each(function iterEntries(entryIdx, entryVal) {
+        if (entryIdx != 0) {
+            currenciesAndCodes.push(parseCurrencyAndCode($(entryVal).html()));
+        }
+    })
+}
+
+var parseCurrencyAndCode = function(combinedString) {
+    var pair = combinedString.replace(/ /g, '').split('-');
+    pair[0] = pair[0].replace(/\./g, '');
+    pair[1] = pair[1].replace('$', 'D');
+    return pair;
+}
+
+var colIdx2currencyIdx = function(colIdx) {
+    return Math.floor((colIdx-1)/2);
+}
+
+var processTierRow_tier2currency = function(rowVal) {
+
+    var tier,
+        currencyIdx,
+        currencyCode;
+    var currTierMap,
+        currCurrencyMap;
+
+    var entries = $(rowVal).find("td");
+    entries.each(function iterEntries(entryIdx, entryVal) {
+        entryVal = $(entryVal);
+
+        if (entryIdx == TIER_COL_IDX) {
+            // create parent map for this tier's row
+            tier = $(entryVal).html().replace(/ /g, '');
+            currTierMap = {};
+            tier2currency[tier] = currTierMap;
+
+        } else if ((entryIdx % 2) == PRICE_COL_MOD) {
+            // create child map for this currency
+            currencyIdx = colIdx2currencyIdx(entryIdx);
+            currencyCode = currenciesAndCodes[currencyIdx][CURRENCIES_AND_CODES_CODE_IDX];
+            currCurrencyMap = {};
+
+            // assign price to currency child map
+            currTierMap[currencyCode] = currCurrencyMap;
+            currCurrencyMap[PRICE_KEY] = parseFloat(entryVal.html());
+
+        } else if ((entryIdx % 2) == PROCEEDS_COL_MOD) {
+            // assign proceeds to currency child map
+            currCurrencyMap[PROCEEDS_KEY] = parseFloat(entryVal.html());
+        }
+    });
+}
+
+var initializeCurrency2tierMap = function() {
+    for (var i = 0; i < currenciesAndCodes.length; i++) {
+        var currencyAndCode = currenciesAndCodes[i];
+        currency2tier[currencyAndCode[CURRENCIES_AND_CODES_CODE_IDX]] = {};
+    }
+}
+
+var initializePossibleCurrencyVals = function() {
+    for (var i = 0; i < currenciesAndCodes.length; i++) {
+        var currencyAndCode = currenciesAndCodes[i];
+        possibleCurrencyVals[currencyAndCode[CURRENCIES_AND_CODES_CODE_IDX]] = [];
+    }
+}
+
+var processTierRow_possibleCurrencyVals = function(rowVal) {
+
+    var currencyIdx,
+        currencyCode;
+
+    var entries = $(rowVal).find("td");
+    entries.each(function iterEntries(entryIdx, entryVal) {
+        entryVal = $(entryVal);
+
+        if (entryIdx == TIER_COL_IDX) {
+            // do nothing
+
+        } else if ((entryIdx % 2) == PRICE_COL_MOD) {
+            // determine the currency and find the parent currency list for this entry
+            currencyIdx = colIdx2currencyIdx(entryIdx);
+            currencyCode = currenciesAndCodes[currencyIdx][CURRENCIES_AND_CODES_CODE_IDX];
+            currCurrencyList = possibleCurrencyVals[currencyCode];
+
+            // add this value to the list of possible values for that currency
+            currCurrencyList.push(parseFloat(entryVal.html()));
+        } else if ((entryIdx % 2) == PROCEEDS_COL_MOD) {
+            // do nothinghttps://www.greyhound.ca/
+        }
+    });
+}
+
+var processTierRow_currency2tier = function(rowVal) {
+
+    var tier,
+        currencyIdx,
+        currencyCode;
+    var currTierMap,
+        currCurrencyMap;
+
+    var entries = $(rowVal).find("td");
+    entries.each(function iterEntries(entryIdx, entryVal) {
+        entryVal = $(entryVal);
+
+        if (entryIdx == TIER_COL_IDX) {
+            // determine tier for this row
+            tier = $(entryVal).html().replace(/ /g, '');
+
+        } else if ((entryIdx % 2) == PRICE_COL_MOD) {
+            // determine the currency and find the parent currency map for this entry
+            currencyIdx = colIdx2currencyIdx(entryIdx);
+            currencyCode = currenciesAndCodes[currencyIdx][CURRENCIES_AND_CODES_CODE_IDX];
+            currCurrencyMap = currency2tier[currencyCode];
+
+            // assign the tier to this currency value
+            currCurrencyMap[formatNumberString(entryVal.html())] = tier;
+        } else if ((entryIdx % 2) == PROCEEDS_COL_MOD) {
+            // do nothing
+        }
+    });
+}
+
+var postProcessDataStructures = function() {
+    for (var tierKey in tier2currency) {
+        var tierMap = tier2currency[tierKey];
+        tierMap['EUR'] = tierMap['Euro'];
+        tierMap['RMB'] = tierMap['CNY'];
+    }
+
+    currency2tier['EUR'] = currency2tier['Euro'];
+    currency2tier['RMB'] = currency2tier['CNY'];
+
+    possibleCurrencyVals['EUR'] = possibleCurrencyVals['Euro'];
+    possibleCurrencyVals['RMB'] = possibleCurrencyVals['CNY'];
+}
+
+
+
+/*
+   export functions
+*/
+
+var convertPriceToTier = function(amt, currency) {
+    if (!possibleCurrencyVals[currency] ) {
+        console.log("Unknown currency:", currency);
+        return null;
+    }
+
+    return currency2tier[currency][formatNumberString(amt)];
+}
+
+var convertTierToPrice = function(tier, currency) {
+    if (!tier2currency[tier]){
+        console.log("Unknown tier:", tier);
+        return null;
+
+    } else if (!tier2currency[tier][currency]) {
+        console.log("Unknown currency:", currency);
+        return null;
+
+    } else {
+        return tier2currency[tier][currency][PRICE_KEY];
+    }
+}
+
+var convertTierToProceeds = function(tier, currency) {
+    if (!tier2currency[tier]){
+        console.log("Unknown tier:", tier);
+        return null;
+
+    } else if (!tier2currency[tier][currency]) {
+        console.log("Unknown currency:", currency);
+        return null;
+
+    } else {
+        return tier2currency[tier][currency][PROCEEDS_KEY];
+    }
+}
+
+var roundTo2Places = function(amt) {
+    return Math.round(amt*100)/100;
+}
+
+
+
+
+
+
+
+/*
+   properly fill data structures
+*/
+
+var table1 = $("table")[0];
+var rows = $(table1).find("tr");
+rows.each(function iterRows(rowIdx, rowVal) {
+
+    if (rowIdx == CURRENCY_ROW) {
+        processCurrencyRow(rowVal);
+
+    } else if (rowIdx == PRICE_DIFFERENTIATION_ROW) {
+        initializeCurrency2tierMap();
+        initializePossibleCurrencyVals();
+
+    } else {
+        processTierRow_tier2currency(rowVal);
+        processTierRow_currency2tier(rowVal);
+        processTierRow_possibleCurrencyVals(rowVal);
+    }
+});
+postProcessDataStructures();
+
+
+
+
+
+/* 
+   write to JS file
+*/
+var currenciesAndCodesString      = JSON.stringify(currenciesAndCodes, undefined, 2),
+    tier2currencyString           = JSON.stringify(tier2currency, undefined, 2),
+    currency2tierString           = JSON.stringify(currency2tier, undefined, 2),
+    possibleCurrencyValsString    = JSON.stringify(possibleCurrencyVals, undefined, 2);
+
+var outFileString = 'var PRICE_KEY      = "' + PRICE_KEY.toString()      + '",' +
+                    '\n' +
+                    '    PROCEEDS_KEY   = "' + PROCEEDS_KEY.toString()   + '";' +
+                    '\n\n\n' +
+
+                    'var currenciesAndCodes = ' +
+                    currenciesAndCodesString +
+                    '\n' +
+                    'exports.currenciesAndCodes = currenciesAndCodes' +
+                    '\n\n\n' +
+
+                    'var tier2currency = ' +
+                    tier2currencyString +
+                    '\n' +
+                    'exports.tier2currency = tier2currency' +
+                    '\n\n\n' +
+
+                    'var currency2tier = ' +
+                    currency2tierString +
+                    '\n' +
+                    'exports.currency2tier = currency2tier' +
+                    '\n\n\n' +
+
+                    'var possibleCurrencyVals = ' +
+                    possibleCurrencyValsString +
+                    '\n' +
+                    'exports.possibleCurrencyVals = possibleCurrencyVals' +
+                    '\n\n\n' +
+
+                    'exports.convertPriceToTier = ' +
+                    convertPriceToTier.toString() +
+                    '\n\n\n' +
+
+                    'exports.convertTierToPrice = ' +
+                    convertTierToPrice.toString() +
+                    '\n\n\n' +
+
+                    'exports.convertTierToProceeds = ' +
+                    convertTierToProceeds.toString() +
+                    '\n\n\n' +
+
+                    'var formatNumberString = ' +
+                    formatNumberString.toString() +
+                    '\n';
+
+var outFilePath = path.join(__dirname, 'tier2currency2tier.js');
+fs.writeFileSync(outFilePath, outFileString);

@@ -1,0 +1,31 @@
+#! /bin/bash
+
+REMOTE_HOST='mongodb1.ymcnetwork.com'
+REMOTE_HOST_I_FILE=~/.ssh/ymca_keypair.pem
+LOCAL_HOST='192.168.1.57'
+MONGO_PORT='27017'
+DB_NAME='ymca'
+
+TMP_DIR_PATH=/home/ubuntu/tmp/
+mkdir -p $TMP_DIR_PATH
+OUTPUT_PATH=$TMP_DIR_PATH'ymca_backups/'
+mkdir -p $OUTPUT_PATH
+
+OUTPUT_FOLDER=$OUTPUT_PATH`eval date +%Y-%m-%d`'/'
+mkdir -p $OUTPUT_FOLDER
+
+FINAL_OUTPUT_FOLDER=$OUTPUT_FOLDER$DB_NAME
+
+mongodump --host $REMOTE_HOST --port $MONGO_PORT --db $DB_NAME --out $OUTPUT_FOLDER
+
+mongorestore --drop --host $LOCAL_HOST --port $MONGO_PORT $FINAL_OUTPUT_FOLDER
+
+sudo apt-get install -y zip
+ZIPFILE_PATH=${OUTPUT_FOLDER%/}'.zip'
+zip -r $ZIPFILE_PATH $FINAL_OUTPUT_FOLDER
+
+rm -rf $FINAL_OUTPUT_FOLDER
+
+ssh -oStrictHostKeyChecking=no -i $REMOTE_HOST_I_FILE ubuntu@$REMOTE_HOST "mkdir -p $TMP_DIR_PATH; mkdir -p $OUTPUT_PATH"
+
+scp -oStrictHostKeyChecking=no -i $REMOTE_HOST_I_FILE $ZIPFILE_PATH ubuntu@$REMOTE_HOST:$ZIPFILE_PATH

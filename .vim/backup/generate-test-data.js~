@@ -1,0 +1,175 @@
+var mongo = require('mongojs');
+var db = mongo.connect('192.168.1.54:27017/ymca', ['events', 'sdk_debug']);
+var async = require('async');
+var moment = require('moment-timezone');
+var crypto = require('crypto');
+
+var hash = function(obj) {
+    return crypto.createHash('md5')
+        .update(JSON.stringify(obj))
+        .update(Date().toString())
+        .digest('hex');
+}
+
+// swing times depend on timezone whether GMT/P*T
+var swingTimes = [
+    moment('2014-01-01T00:00:00-0000'),
+    moment('2014-01-01T01:00:00-0000'),
+    moment('2014-01-01T02:00:00-0000'),
+    moment('2014-01-01T03:00:00-0000'),
+    moment('2014-01-01T04:00:00-0000'),
+    moment('2014-01-01T05:00:00-0000'),
+    moment('2014-01-01T06:00:00-0000'),
+    moment('2014-01-01T07:00:00-0000'),
+    moment('2014-01-01T07:59:59-0000'),
+]
+var stableTimes = [
+    moment('2014-01-14T08:00:00-0000'),
+    moment('2014-01-14T09:00:00-0000'),
+    moment('2014-01-14T10:00:00-0000'),
+    moment('2014-01-14T11:00:00-0000'),
+    moment('2014-01-14T12:00:00-0000'),
+    moment('2014-01-14T13:00:00-0000'),
+    moment('2014-01-14T15:00:00-0000'),
+    moment('2014-01-14T16:00:00-0000'),
+    moment('2014-01-14T17:00:00-0000'),
+    moment('2014-01-14T18:00:00-0000'),
+    moment('2014-01-14T19:00:00-0000'),
+    moment('2014-01-14T20:00:00-0000'),
+    moment('2014-01-14T21:00:00-0000'),
+    moment('2014-01-14T22:00:00-0000'),
+    moment('2014-01-14T23:00:00-0000'),
+    moment('2014-01-14T23:59:59-0000'),
+    moment('2014-01-19T08:00:00-0000'),
+    moment('2014-01-19T09:00:00-0000'),
+    moment('2014-01-19T10:00:00-0000'),
+    moment('2014-01-19T11:00:00-0000'),
+    moment('2014-01-19T12:00:00-0000'),
+    moment('2014-01-19T13:00:00-0000'),
+    moment('2014-01-19T15:00:00-0000'),
+    moment('2014-01-19T16:00:00-0000'),
+    moment('2014-01-19T17:00:00-0000'),
+    moment('2014-01-19T18:00:00-0000'),
+    moment('2014-01-19T19:00:00-0000'),
+    moment('2014-01-19T20:00:00-0000'),
+    moment('2014-01-19T21:00:00-0000'),
+    moment('2014-01-19T22:00:00-0000'),
+    moment('2014-01-19T23:00:00-0000'),
+    moment('2014-01-19T23:59:59-0000'),
+]
+var allTimes = swingTimes.concat(stableTimes);
+console.log("\nall times:\n", allTimes, "\n\n");
+
+var eventTemplates = [
+    {
+        "event" : "YA0birth",
+        "properties" : {
+            "distinct_id" : "497e201e-f053-49ec-9178-eeb4ee13a023",
+            "uid" : "",
+            "YA0debug" : 1,
+            "YA0ver" : "1.0.6",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "0620780141c385654d4637bac3de52a6",
+            "ip" : "96.53.37.62"
+        }
+    },
+    {
+        "event" : "YA0charge",
+        "properties" : {
+            "distinct_id" : "497e201e-f053-49ec-9178-eeb4ee13a023",
+            "amount" : 99.99,
+            "currency" : "USD",
+            "YA0USD": 99.99,
+            "YA0ver" : "0.2.1",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "5998e01556d043b7bb1b1cd7327f66d7",
+            "ip" : "24.85.253.29"
+        },
+    },
+    {
+        "event" : "YA0login",
+        "properties" : {
+            "distinct_id" : "497e201e-f053-49ec-9178-eeb4ee13a023",
+            "uid" : "86",
+            "YA0ver" : "0.2.2",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "",
+            "ip" : "66.11.189.187"
+        },
+    },
+    {
+        "event" : "YA0register",
+        "properties" : {
+            "distinct_id" : "497e201e-f053-49ec-9178-eeb4ee13a023",
+            "uid" : "william@ymcnetwork.com",
+            "YA0ver" : "0.2.2",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "5998e01556d043b7bb1b1cd7327f66d7",
+            "ip" : "96.53.37.62"
+        },
+    },
+    {
+	"event" : "YA0session",
+        "properties" : {
+            "distinct_id" : "497e201e-f053-49ec-9178-eeb4ee13a023",
+            "start" : 1373327594,
+            "end" : 1373327599,
+            "length" : 5,
+            "YA0ver" : "0.2.1",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "5998e01556d043b7bb1b1cd7327f66d7",
+            "ip" : "24.85.253.29"
+        },
+    },
+    {
+	"event" : "YA0start",
+        "properties" : {
+            "distinct_id" : "497e201e-f053-49ec-9178-eeb4ee13a023",
+            "YA0ver" : "0.2.1",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "5998e01556d043b7bb1b1cd7327f66d7",
+            "ip" : "24.85.253.29"
+        },
+    },
+    {
+	"event" : "crash",
+	"properties" : {
+            "distinct_id" : "497e201e-f053-49ec-9178-eeb4ee13a023",
+            "uid" : "",
+            "YA0ver" : "1.0.5",
+            "YA0token" : "0cea0618006511e384c212313b0ace15",
+            "token" : "c6e672e461b7bc09814e3e5db56437b0",
+            "ip" : "96.53.37.62"
+        },
+    },
+]
+
+console.log("\nevents:\n", eventTemplates, "\n\n");
+
+console.log("beggining:");
+async.eachSeries(eventTemplates, function(eventTemplate, eventTemplateCallback) {
+
+    console.log("\tusing template for event " + eventTemplate.event);
+
+    async.eachSeries(allTimes, function(time, timesCallback) {
+
+        console.log("\n\t\tgiving it time: " + time.format());
+        eventTemplate.properties['time'] = time.toDate(),
+        eventTemplate._id = hash(eventTemplate);
+        console.log("\n", JSON.stringify(eventTemplate), "\n");
+        db.events.insert(eventTemplate, function(err, doc) {
+            if (err) { throw err; }
+            console.log("added event " + doc.event + " with time " + doc.properties.time);
+            timesCallback();
+        });
+    },
+    function(err) {
+        if (err) {throw err; }
+        console.log("all done the times for event: " + eventTemplate.event);
+        eventTemplateCallback();
+    });
+},
+    function(err) {
+        if (err) { throw err; }
+        process.exit(0);
+});

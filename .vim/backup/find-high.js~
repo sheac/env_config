@@ -1,0 +1,30 @@
+var MongoClient = require('mongodb').MongoClient;
+
+function makeMonthHigh(db, coll, _id) {
+    console.log("Calling thing on thing with _id = "+_id);
+    db.collection(coll).update(
+        {_id:_id},
+        {$set: {'month_high':true}},
+        function(err, updated) {
+            if (err) throw err;
+            console.log("updated " + updated["_id"]);
+        }
+    );
+}
+
+MongoClient.connect('mongodb://localhost:27017/weather', function(err, db) {
+    if (err) throw err;
+
+    var cur = db.collection('data').find().sort([["State","asc"], ["Temperature","asc"]]);
+
+    var currState = "";
+    cur.each(function(err, doc) {
+        if (doc == null)
+            return db.close();
+
+        if (doc["State"] != currState) {
+            makeMonthHigh(db, 'data', doc["_id"]);
+            currState = doc["State"];
+        }
+    });
+});

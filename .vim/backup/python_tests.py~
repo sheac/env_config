@@ -1,0 +1,140 @@
+# -*- coding: utf-8 -*-
+
+
+from ymc.lib import helpers
+
+from ymc.model import User
+from ymc.model import Game
+
+from django.forms.models import model_to_dict
+from django.core.exceptions import ObjectDoesNotExist
+
+
+from django.utils.timezone import utc
+import datetime
+
+import unittest, json, re
+
+from django.test import TestCase
+
+
+def test_cases():
+    return [
+        'test_unicode',
+        'test_models',
+        'test_dictionary',
+        'test_regex',
+        'test_dates',
+    ]
+
+
+"""
+    PythonTestCase
+"""
+class PythonTestCase(TestCase):
+
+
+    def setUp(self):
+        values = dict(
+            username='stindill',
+            password='changeme',
+            email='scott@ymcnetwork.com',
+            first_name='Scott',
+            last_name='Tindill',
+        )
+
+        self.user = User.Build(values)
+        self.user.GenerateForgotPasswordToken()
+        self.user.login()
+    """
+    #
+    """
+    def test_unicode(self):
+        value = u"TestingeRereRere@这个游戏规则.Com"
+        print(value)
+        byte_array = bytearray(value, encoding="utf8", errors="ignore")
+        lower_str = value.lower()
+        print(lower_str)
+        lower_str = helpers.strtolower(value)
+        print(lower_str)
+
+    """
+    #
+    """
+    def test_models(self):
+
+        game_values = dict(
+            rating=1,
+            ymc_id="8888888888888888888",
+            title="Test Game 1",
+            created_at=datetime.datetime.utcnow().replace(tzinfo=utc),
+            allow_unregistered_login=True,
+        );
+
+        saved_game = Game.Build(game_values)
+        saved_game.save()
+
+        game = Game.objects.get(id=saved_game.id)
+        print(model_to_dict(game))
+
+        try:
+            bad_game = Game.objects.get(id=2)
+        except ObjectDoesNotExist:
+            print("ObjectDoesNotExist")
+
+        print(model_to_dict(game))
+
+    """
+    #
+    """
+    def test_dictionary(self):
+        print('\n========== test_dictionary ==========\n')
+
+        facebook_access_token = None
+        facebook_id = None
+
+        profile = dict(
+
+        )
+
+        email = None
+        if 'email' in profile:
+            email = profile.get('email')
+
+        gender = 0
+        if 'gender' in profile:
+            if(profile['gender'] != 'male'):
+                gender = 1
+
+        result = dict(
+            username=profile.get('username'),
+            password=None,
+            first_name=profile.get('first_name'),
+            last_name=profile.get('last_name'),
+            email=email,
+            facebook_id=facebook_id,
+            facebook_access_token=facebook_access_token,
+            is_admin=False,
+            gender=gender,
+        )
+
+        print(result)
+
+    def test_regex(self):
+        print('\n========== test_regex ==========\n')
+        reset_path = "http://prg1.ymcgames.com/dmtest/index00.php?act=1009&key=2309a172a00f480e3f46488424a3887d&uid=%%USER_GAME_ID%%&acc=%%USER_EMAIL%%&pwd=%%USER_PASSWORD%%"
+        reset_path = re.sub(r'%%USER_GAME_ID%%', str(14), reset_path)
+        reset_path = re.sub(r'%%USER_EMAIL%%', 'test@example.com', reset_path)
+        reset_path = re.sub(r'%%USER_PASSWORD%%', 'testpassword', reset_path)
+        print(reset_path)
+
+    def test_dates(self):
+        print('\n========== test_dates ==========\n')
+        utc_now = datetime.datetime.utcnow().replace(tzinfo=utc);
+        print(utc_now)
+        queryset = User.objects.filter(forgot_password_token=self.user.forgot_password_token, access_token_expiry__gte=utc_now)[:1]
+
+
+
+        print("\n\n\n\n\n")
+

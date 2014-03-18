@@ -1,0 +1,23 @@
+from python_tests import *
+from authentication_tests import *
+from permissionsgroups_view_tests import *
+from games_view_tests import *
+from users_view_tests import *
+
+import ymc.tests.smtp_monkeypatch
+import ymc.tests.facebook_graph_monkeypatch
+
+"""
+    Tests suite setup
+"""
+def suite():
+
+    suites = []
+    suites.append(unittest.TestSuite(map(PythonTestCase, python_tests.test_cases())))
+    suites.append(unittest.TestSuite(map(AuthenticationTestCase, authentication_tests.test_cases())))
+    suites.append(unittest.TestSuite(map(PermissionsGroupsViewTestCase, permissionsgroups_view_tests.test_cases())))
+    suites.append(unittest.TestSuite(map(GamesViewTestCase, games_view_tests.test_cases())))
+    suites.append(unittest.TestSuite(map(UsersViewTestCase, users_view_tests.test_cases())))
+
+    return unittest.TestSuite(suites)
+

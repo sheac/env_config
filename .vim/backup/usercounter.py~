@@ -1,0 +1,50 @@
+from django.utils import simplejson
+from django.http import HttpResponse, HttpRequest, HttpResponseRedirect
+
+from django.db.models import Q
+
+from app.session import force_login
+
+from django.shortcuts import render
+
+from ymc.model.users import User
+
+from django.conf import settings
+
+EXCLUDED_IP_ADDRESS = "96.53.37.62"
+
+def show(request):
+    return  render(request, 'usercounter.html')
+
+def total_users(request):
+
+    resp = invalid_password_response(request)
+    if (resp):
+        return resp
+
+    count = User.objects.count()
+
+    res = {'count':count}
+    json = simplejson.dumps(res)
+
+    return HttpResponse(json, mimetype='application/json')
+
+def excluded_users(request):
+
+    resp = invalid_password_response(request)
+    if (resp):
+        return resp
+
+    count = User.objects.filter(Q(ip_address=EXCLUDED_IP_ADDRESS)).count()
+
+    res = {'count':count}
+    json = simplejson.dumps(res)
+
+    return HttpResponse(json, mimetype='application/json')
+
+def invalid_password_response(request):
+    if ('password' not in request.GET.keys() or request.GET['password'] != settings.USER_COUNTER_PASSWORD):
+        return HttpResponse(simplejson.dumps({'count': -1}))
+
+    else:
+        return False

@@ -1,0 +1,1771 @@
+var app = angular.module('yaReporter',
+    [
+        'ngResource',
+        'ui.router',
+        'ui.bootstrap',
+        'ngCookies',
+//    'ngAnimate',
+        'ajoslin.promise-tracker',
+        'cgBusy',
+        'pascalprecht.translate',
+        'ngCookies',
+        'reporterFilters',
+]);
+
+
+var gameList = [];
+var gameSelected = {}; // TODO refactor this into a service or something
+var APIversion = '/api/1.0';
+var timeSteps = {
+    day:30,
+    week:24,
+    month:12
+}
+var LOGGLY_KEY = 'cbdca9c1-87bc-405c-bee2-64749c07bcf6';
+
+app.config(function($stateProvider, $routeProvider){
+    $stateProvider
+
+        .state('login', {
+//            url:"",                 // default state
+            views: {
+                page:{
+                    templateUrl: "../view/login.html"
+                }
+            }
+        })
+        .state('verify', {
+            views: {
+                page:{
+                    templateUrl: "../view/main.verify.html"
+                }
+            }
+        })
+        .state('main', {
+            views: {
+                page:{
+                    templateUrl: "../view/main.html"
+                }
+            }
+        })
+        .state('main.revenue', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/revenue.html"
+                }
+            }
+        })
+        .state('main.arpu', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/arpu.html"
+                }
+            }
+        })
+        .state('main.arppu', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/arppu.html"
+                }
+            }
+        })
+        .state('main.first_launches', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/first_launches.html"
+                }
+            }
+        })
+        .state('main.user_start', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/user_start.html"
+                }
+            }
+        })
+        .state('main.user_register', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/user_register.html"
+                }
+            }
+        })
+        .state('main.all_users', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/all_users.html"
+                }
+            }
+        })
+        .state('main.all_buyers', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/all_buyers.html"
+                }
+            }
+        })
+        .state('main.new_buyers', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/new_buyers.html"
+                }
+            }
+        })
+        .state('main.repeated_buyers', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/repeated_buyers.html"
+                }
+            }
+        })
+        .state('main.retention', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/retention.html"
+                }
+            }
+        })
+        .state('main.retention2', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/retention2.html"
+                }
+            }
+        })
+        .state('main.session_length', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/session_length.html"
+                }
+            }
+        })
+        .state('main.sdk_debug', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/sdk_debug.html"
+                }
+            }
+        })
+        .state('main.crash', {
+            views: {
+                "viewChart": {
+                    templateUrl: "../view/dashboards/crash.html"
+                }
+            }
+        })
+
+})
+    .config(['$translateProvider', function($translateProvider) {
+        $translateProvider.translations(translations);
+}])
+    .run(
+        ['$rootScope','$state','$stateParams','YmcaLogger',function($rootScope,$state,$stateParams,YmcaLogger,$http){
+            $rootScope.$state = $state;
+            $rootScope.$stateParams = $stateParams;
+            YmcaLogger.log('Go!');
+            if (typeof viaIFrame != 'undefined' && viaIFrame) {
+                YmcaLogger.log('go to verify...');
+                $rootScope.isViaIFrame = true;
+                $state.transitionTo('verify');
+
+            } else
+            {
+                YmcaLogger.log('go to login...');
+                $rootScope.isViaIFrame = false;
+                // show login form
+                $state.transitionTo('login');   // url route has higher priority
+
+            }
+        }]);
+
+app.factory('YmcaLogger', function() {
+
+    // requires we include the script: /public/lib/loggly.tracker.js
+    var _LTracker = window._LTracker || [];
+    _LTracker.push({logglyKey: LOGGLY_KEY });
+
+    var trackAtLevel = function(data, level) {
+        var dataType = typeof data;
+        if (!data || !(dataType === 'object' || dataType === 'string')) {
+            return;
+        }
+
+        if (typeof data != 'object') {
+            data = {text: data};
+        }
+
+        data.level = level;
+        _LTracker.push(data);
+    };
+
+    return {
+
+        log: function(data) {
+            console.log(data);
+            return trackAtLevel(data, 'info');
+        },
+
+        info: function(data) {
+            console.log(data);
+            return trackAtLevel(data, 'info');
+        },
+
+        error: function(data) {
+            console.error(data);
+            return trackAtLevel(data, 'error');
+        }
+    };
+});
+
+
+app.factory('Games',function($resource){
+    var games = $resource(APIversion+'/signin',{},{
+        sign:{
+            method:'POST'
+//            isArray:true
+        }
+    });
+    return games;
+});
+
+app.factory('Revenue',function($resource,$http){
+//    var games = $resource(APIversion+'/revenue',{},{
+//        get:{
+//            method:'GET',
+//            isArray:true
+//        }
+//    });
+
+    var games = function(params,next){
+        $http({url:APIversion+'/revenue',method:'GET',tracker:'pizza',params:params}).success(
+            function(result){
+                next(result)
+            }
+        )
+    }
+    return games;
+});
+
+app.factory('ARPU',function($resource,$http){
+//    return $resource(APIversion+'/arpu',{},{
+//        get:{
+//            method:'GET',
+//            isArray:true
+//        }
+//    });
+
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/arpu',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+
+
+});
+
+app.factory('SDKDebug',function($resource,$http){
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/sdk_debug',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+});
+
+
+app.factory('FirstLaunches',function($resource,$http){
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/first_launches',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+});
+app.factory('UserStart',function($resource,$http){
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/user_start',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+});
+app.factory('UserRegister',function($resource,$http){
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/user_register',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+});
+
+app.factory('AllUsers',function($resource,$http){
+//    return $resource(APIversion+'/user_active',{},{
+//        get:{
+//            method:'GET',
+//            isArray:true
+//        }
+//    });
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/user_active',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+
+
+});
+
+app.factory('AllBuyers',function($resource,$http){
+//    return $resource(APIversion+'/user_buyer_all',{},{
+//        get:{
+//            method:'GET',
+//            isArray:true
+//        }
+//    });
+
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/user_buyer_all',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+
+});
+
+app.factory('NewBuyers',function($resource,$http){
+//    return $resource(APIversion+'/user_buyer_sort',{},{
+//        get:{
+//            method:'GET',
+//            isArray:true
+//        }
+//    });
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/user_buyer_sort',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+});
+
+app.factory('Retention',function($http){
+//    return $http({method:'GET',url:APIversion+'/retention'});
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/retention',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+
+});
+
+app.factory('Retention2',function($http){
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/retention2',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+});
+
+app.factory('Session',function($http){
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/session',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+
+});
+app.factory('Crash',function($http){
+    return {
+        get:function(params,next){
+            $http({url:APIversion+'/crash',method:'GET',tracker:'pizza',params:params})
+                .success(function(result){
+                    next(result)
+                })
+        }
+    }
+
+});
+
+app.factory('Settings',
+        ['$cookieStore', '$http', '$translate', 'YmcaLogger', function($cookieStore, $http, $translate, YmcaLogger) {
+
+            var AVAIL_LANGUAGES = ['EN', 'ZH'];
+            var AVAIL_TIMEZONES = ['GMT', 'pacific'];
+            var DEFAULT_LANGUAGE = AVAIL_LANGUAGES[0];
+            var DEFAULT_TIMEZONE = AVAIL_TIMEZONES[1];
+
+            var SELECTED_CURRENCY = {'abbrev': 'USD', 'symbol': '$'};
+
+            var getSettings = function getSettings() {
+                var settings = $cookieStore.get('settings');
+                if (!settings) {
+                    settings = {};
+                    setSettings(settings);
+                }
+                return settings;
+            }
+
+            var setSettings = function setSettings(settings) {
+                $cookieStore.put('settings', settings);
+            }
+
+            /* Language */
+
+            var setLanguage = function setLanguage(lang, $scope) {
+                if (AVAIL_LANGUAGES.indexOf(lang) < 0) {
+                    YmcaLogger.error({
+                        action: 'setLanguage',
+                        message: "Tried to set language to unknown: "+lang
+                    });
+                    return;
+                }
+
+                var settings = getSettings();
+                settings['language'] = lang;
+                setSettings(settings);
+                $scope.language = getSettings()['language'];
+            }
+
+            var getLanguage = function getLangauge($scope) {
+                var settings = getSettings();
+                var lang = settings['language'];
+                if (!lang) {
+                    lang = DEFAULT_LANGUAGE;
+                    setLanguage(lang, $scope);
+                }
+                return lang;
+            }
+
+            /* Timezone */
+
+            var setTimezone = function setTimezone(tz, $scope) {
+                if (AVAIL_TIMEZONES.indexOf(tz) < 0) {
+                    YmcaLogger.error(AVAIL_TIMEZONES);
+                    YmcaLogger.error("Tried to set timezone to unknown:", tz);
+                    return;
+                }
+
+                $scope.timezone = tz;
+
+                YmcaLogger.log("timezone:", tz);
+                if ($scope.addSuccess) {
+                    $scope.addSuccess($translate($scope.language+'.notifications.timezone_selected'));
+                }
+            }
+
+            var getTimezone = function getTimezone($scope) {
+                var tz = $scope.timezone;
+                if (!tz) {
+                    tz = DEFAULT_TIMEZONE;
+                    setTimezone(tz, $scope);
+                }
+                return tz;
+            }
+
+            var getCurrency = function getCurrency($scope) {
+                $scope.selected_currency = SELECTED_CURRENCY;
+                return SELECTED_CURRENCY;
+            }
+
+            /* Collection */
+
+            var setCollection = function setCollection(coll, $scope) {
+                // application generates 'coll', so we don't validate it
+                $scope.collection = coll;
+                YmcaLogger.log("collection:", $scope.collection);
+                if ($scope.addSuccess) {
+                    $scope.addSuccess($translate($scope.language+'.notifications.collection_changed'));
+                }
+            }
+
+            var getCollection = function getCollection($scope) {
+                var coll = $scope.collection;
+                if (!coll) {
+                    coll = 'events';
+                }
+                return coll;
+            }
+
+            return {
+                getSettings: getSettings,
+                /* setSettings: setSettings, // TOO VOLATILE TO EXPORT */
+                AVAIL_LANGUAGES: AVAIL_LANGUAGES,
+                AVAIL_TIMEZONES: AVAIL_TIMEZONES,
+                getLanguage: getLanguage,
+                setLanguage: setLanguage,
+                getTimezone: getTimezone,
+                setTimezone: setTimezone,
+                getCurrency: getCurrency,
+                getCollection: getCollection,
+                setCollection: setCollection,
+            }
+        }]
+);
+
+function verifyController($scope,$state,$http){
+    $http({
+        method:'POST',
+        url:APIversion+'/verify',
+        data:{uid:g_userId,gid:g_gameId,did:g_developerId,token:g_token,is_admin:g_isAdmin}
+    }).success(function(result){
+            console.log(result);
+            if (result.ok==1){
+                gameList.push(result.game);
+                $state.transitionTo('main');   // url route has higher priority
+            } else {
+                $state.transitionTo('login');
+            }
+        }).error(function(result){
+            console.log(result);
+        });
+
+}
+
+function loginController($scope,Games,$state,$cookies,Settings){
+    $scope.data = {username:$cookies.username,password:$cookies.password};
+
+    $scope.language = Settings.getLanguage();
+    $scope.setLanguage = function(lang) {
+        Settings.setLanguage(lang, $scope);
+    }
+
+//    console.log('global:',g_username);
+//    if (g_username!=undefined && g_password!=undefined)
+//    {
+//        $scope.data.username = g_username;
+//        $scope.data.password = g_password;
+//    }
+
+    $scope.send = function() {
+        var username = $scope.data.username;
+        var password = $scope.data.password;
+
+        $cookies.username = username
+        $cookies.password = password
+
+
+        console.log('username:',username,'password:',password);
+
+        Games.sign({user:username,pass:password},
+            function(result){
+                console.log(result);
+
+                if (result.status==1){
+                    gameList = result.response.games;
+                    console.log('gameList:',gameList);
+                    $state.transitionTo('main');
+
+                } else {
+                    $scope.message = result.message;
+                    console.log('ERROR',result.message);
+                }
+
+
+            },function(err){
+                console.log(err);
+        });
+    }
+
+}
+
+
+function pageController($scope,$state,$modal,$http,$timeout,$translate,Settings){
+
+    $scope.language = Settings.getLanguage($scope);
+    $scope.setLanguage = function(lang) {
+        Settings.setLanguage(lang, $scope);
+    }
+
+    $scope.timezone = Settings.getTimezone($scope);
+    $scope.setTimezone = function(tz) {
+        Settings.setTimezone(tz, $scope);
+    }
+
+    $scope.selected_currency = Settings.getCurrency($scope);
+    $scope.collection = Settings.getCollection($scope);
+    $scope.setCollection = function(coll) {
+        Settings.setCollection(coll, $scope);
+    }
+
+    $scope.alerts = [
+    ];
+
+    $scope.closeAlertByIndex = function(idx) {
+        $scope.alerts.splice(idx, 1);
+    }
+
+    $scope.closeAlertByObject = function(obj) {
+        $scope.closeAlertByIndex($scope.alerts.indexOf(obj));
+    }
+
+    $scope.addSuccess = function(msg) {
+        $scope.addAlert('success', msg);
+    }
+    $scope.addError = function(msg) {
+        $scope.addAlert('error', msg);
+    }
+
+    $scope.addAlert = function(type, msg) {
+        var alert = {type: type, msg: msg};
+        $scope.alerts.unshift(alert);
+        $timeout(function(){
+            $scope.closeAlertByObject(alert);
+        }, 5000);
+    }
+
+    $scope.openInfoModal = function(metric) {
+        var modal = $modal.open({
+            templateUrl: 'view/_info_modal.html',
+            resolve: {
+                modal_metric:   function() { return metric },
+                language:       function() { return Settings.getLanguage($scope) },
+            },
+            controller: function($scope, $modalInstance, modal_metric, language){
+                $scope.close = function() {
+                    console.log("closing");
+                    $modalInstance.close();
+                }
+                $scope.metric = modal_metric;
+                $scope.modal_prefix = language+'.info_modal.'+$scope.metric;
+                $scope.language = language;
+            }
+        });   
+
+    }
+
+    $scope.showLogin = function() {
+        $state.transitionTo('login');
+    }
+
+    $scope.showMain = function() {
+        $state.transitionTo('main');
+    }
+
+    $scope.showRevenue = function() {
+        $state.transitionTo('main.revenue');
+    }
+
+    $scope.showArpu = function() {
+        $state.transitionTo('main.arpu');
+    }
+
+    $scope.showArppu = function() {
+        $state.transitionTo('main.arppu');
+    }
+
+    $scope.showFirstLaunches = function() {
+        $state.transitionTo('main.first_launches');
+    }
+    $scope.showUserStart = function() {
+        $state.transitionTo('main.user_start');
+    }
+    $scope.showUserRegister = function() {
+        $state.transitionTo('main.user_register');
+    }
+
+    $scope.showAllUsers = function() {
+        console.log("a1");
+        $state.transitionTo('main.all_users');
+    }
+
+    $scope.showAllBuyers = function() {
+        console.log("a2");
+        $state.transitionTo('main.all_buyers');
+    }
+
+    $scope.showNewBuyers = function() {
+        console.log("a3");
+        $state.transitionTo('main.new_buyers');
+    }
+
+    $scope.showRepeatedBuyers = function() {
+        console.log("a4");
+        $state.transitionTo('main.repeated_buyers');
+    }
+
+    $scope.showRetention = function() {
+        console.log("a5");
+        $scope.addSuccess($translate($scope.language+'.notifications.retention_selected'));
+        $state.transitionTo('main.retention');
+    }
+    $scope.showRetention2 = function() {
+        $scope.addSuccess($translate($scope.language+'.notifications.retention_selected'));
+        $state.transitionTo('main.retention2');
+    }
+
+    $scope.showSessionLength = function() {
+        $state.transitionTo('main.session_length');
+    }
+
+
+    $scope.showSDKDebug = function() {
+        console.log("a6");
+        $state.transitionTo('main.sdk_debug');
+    }
+
+    $scope.showCrash = function() {
+        $state.transitionTo('main.crash');
+    }
+}
+
+function mainController($scope,$state,Settings){
+
+    $scope.language = Settings.getLanguage($scope);
+    $scope.setLanguage = function(lang) {
+        Settings.setLanguage(lang, $scope);
+    }
+
+    $scope.timezone = Settings.getTimezone($scope);
+    $scope.setTimezone = function(tz) {
+        Settings.setTimezone(tz, $scope);
+    }
+}
+
+function gameSelectorController($scope,$translate){
+
+    $scope.gameList = gameList;
+
+    gameSelected = gameList[0];
+    $scope.firstGameTitle = gameSelected.title;
+
+    $scope.selectGame = function(index){
+        gameSelected = gameList[index];
+        $scope.firstGameTitle = gameSelected.title;
+        $scope.addSuccess($translate($scope.language+'.notifications.game_selected_cta', {game_title: $scope.firstGameTitle}));
+    }
+}
+
+function revenueController($scope,Revenue,$http,$translate){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.revenue')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+
+    var list = []
+
+    var chart;
+        initChart(data,function(ch){
+            chart = ch;
+        },
+        $scope.selected_currency
+    );
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[];
+        data[0].key = $scope.getDataKey();
+        list = []
+//        Revenue.get({type:timeInterval,token:gameSelected.ymc_id},function(result){
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        Revenue(params,function(result){
+            console.log("|revenue controller| got result!")
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.revenue])
+                list.push([moment(element.ts*1000).format(),element.revenue])
+//                console.log('ts=',moment(element.ts*1000).format())
+            });
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+
+            $scope.rawData = list
+        },function(err){
+            console.log(err);
+        });
+    }
+
+    console.log('revenue controller start!!!');
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'revenue';
+    $scope.isCurrencyBased = true;
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+
+function ARPUController($scope,$translate,ARPU){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.arpu')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+
+    var list = []
+
+    var chart;
+    initChart(data,function(ch){
+            chart = ch;
+        },
+        $scope.selected_currency
+    );
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[]
+        data[0].key = $scope.getDataKey();
+        list = []
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        ARPU.get(params,function(result){
+            result.forEach(function(element){
+                var arpu = element.users==0?0:element.revenue/element.users
+                data[0].values.push([element.ts*1000,arpu])
+                list.push([moment(element.ts*1000).format(),arpu])
+            });
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+
+            $scope.rawData = list
+        },function(err){
+            console.log(err);
+        });
+    }
+
+
+
+
+
+    console.log('ARPU controller start!!!');
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'arpu';
+    $scope.isCurrencyBased = true;
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+function cleanData(data,timeInterval){
+
+    var todayIndex;
+    data[0].values = [];
+
+/**
+ * Date method difference !!!
+ *
+ * Mongodb:
+ *      $dayOfYear  1 ~ 366
+ *      $week       0 ~ 53
+ *      $month      1 ~ 12
+ *
+ * Moment:
+ *      dayOfYear   1 ~ 366
+ *      week        1 ~ 54
+ *      month       0 ~ 11
+ *
+ */
+
+    if (timeInterval=='day') {
+        todayIndex = moment().dayOfYear();
+    } else if (timeInterval=='week') {
+        todayIndex = moment().week();
+    } else if (timeInterval=='month') {
+        todayIndex = moment().month();
+    }
+
+//        console.log('today is %s %s of year',todayIndex,timeInterval);
+
+    for(var i=0;i<timeSteps[timeInterval];i++){          // i is how many days(d,w,m) before today
+        var step;
+        if (timeInterval=='day') {
+            step = moment().dayOfYear(todayIndex-i);
+        } else if (timeInterval=='week') {
+            step = moment().week(todayIndex-i);
+        } else if (timeInterval=='month') {
+            step = moment().month(todayIndex-i);
+        }
+
+        data[0].values.unshift([step.format('X')*1000,0]);
+    }
+
+    console.log('nvd3 data:',data[0].values)
+
+    return {todayId:todayIndex,data:data};
+}
+
+// If the chart is created again over again, another option is make chart as global varible.
+function initChart(data, callback, currency){
+    nv.addGraph(function() {
+        var chart = nv.models.lineChart()
+//                var chart = nv.models.multiBarChart()
+            .interpolate("monotone")
+            .x(function(d) { return d[0] })
+            .y(function(d) { return d[1] })
+//                .margin({top: 20, right: 20, bottom: 20, left: 20})
+//            .clipEdge(true);
+
+        chart.xAxis
+            .showMaxMin(false)
+//            .tickFormat(function(d) { return d3.time.format('%x')(new Date(d)) });
+//            .tickFormat(function(d) { return d3.time.format.utc('%c')(new Date(d)) });
+            .tickFormat(function(d) { return d3.time.format.utc('%x')(new Date(d)) });
+
+        if (typeof currency === "undefined") {
+                chart.yAxis
+//                  .showMaxMin(false)
+                    .tickFormat(d3.format(','));
+        } else {
+                chart.yAxis
+//                  .showMaxMin(false)
+                    .tickFormat(function(d) {return currency['symbol']+d3.format(',.2f')(d)});
+        }
+
+        d3.select('#myChart svg')
+            .datum(data)
+            .transition().duration(500)
+            .call(chart);
+
+        nv.utils.windowResize(chart.update);
+
+        callback(chart);
+        return chart;
+    });
+
+
+}
+
+
+function initChart2(data,callback){
+    nv.addGraph(function() {
+        var chart = nv.models.linePlusBarChart()
+//            .interpolate("monotone")
+            .x(function(d) { return d[0] })
+            .y(function(d) { return d[1] })
+
+        chart.xAxis
+            .showMaxMin(false)
+            .tickFormat(function(d) { return d3.time.format.utc('%x')(new Date(d)) });
+
+        chart.y1Axis
+            .tickFormat(d3.format(',.2f'));
+        chart.y2Axis
+            .tickFormat(d3.format(',.2f'));
+
+        d3.select('#myChart svg')
+            .datum(data)
+            .transition().duration(500)
+            .call(chart);
+
+        nv.utils.windowResize(chart.update);
+
+        callback(chart);
+        return chart;
+    });
+
+
+}
+
+
+function updateChart(chart,data){
+//    d3.select('#myChart svg').empty();
+    d3.select('#myChart svg').datum(data).transition().duration(500).call(chart);
+}
+
+function ts2date(ts) {
+    var date = new Date(ts)
+    return date
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function firstLaunchesController($scope,FirstLaunches,$http,$translate){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.first_launches')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+
+    var list= []
+
+    var chart;
+    initChart(data,function(ch){
+        chart = ch;
+    });
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[]
+        data[0].key = $scope.getDataKey();
+        list = []
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        FirstLaunches.get(params,function(result){
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.users])
+                list.push([moment(element.ts*1000).format(),element.users])
+            });
+            $scope.rawData = list
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'first_launches';
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+function userStartController($scope,UserStart,$http,$translate){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.dau_wau_mau')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+
+    var list= []
+
+    var chart;
+    initChart(data,function(ch){
+        chart = ch;
+    });
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[]
+        data[0].key = $scope.getDataKey();
+        list = []
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        UserStart.get(params,function(result){
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.users])
+                list.push([moment(element.ts*1000).format(),element.users])
+            });
+            $scope.rawData = list
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'dau_wau_mau';
+    $scope.showAsDauWauMau = true;
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+function userRegisterController($scope,UserRegister,$http,$translate){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.ymc_registers')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+
+    var list= []
+
+    var chart;
+    initChart(data,function(ch){
+        chart = ch;
+    });
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[]
+        data[0].key = $scope.getDataKey();
+        list = []
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        UserRegister.get(params,function(result){
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.users])
+                list.push([moment(element.ts*1000).format(),element.users])
+            });
+            $scope.rawData = list
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'ymc_registers';
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+function allUserController($scope,AllUsers,$http,$translate){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.ymc_logins')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+
+    var list= []
+
+    var chart;
+    initChart(data,function(ch){
+        chart = ch;
+    });
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[]
+        data[0].key = $scope.getDataKey();
+        list = []
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        AllUsers.get(params,function(result){
+//        $http({url:APIversion+'/user_active',method:"GET",params:{type:timeInterval,token:gameSelected.ymc_id},tracker:'pizza'}).success(function(result){
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.users])
+                list.push([moment(element.ts*1000).format(),element.users])
+            });
+            $scope.rawData = list
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'ymc_logins';
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+function sdkDebugController($scope,SDKDebug,$http){
+
+    var UPDATE_INTERVAL = 5000;
+    var EVENTS_LEN = 50;
+    var DOWN_CARAT = "&#x25BC;", UP_CARAT = "&#x25B2;";
+
+    var EVENT_TYPE_TRANSLATIONS = {
+        'YA0birth'      		: 'First Launch',
+
+        'YA0start'      		: 'Launch App',
+
+        'YA0session'    		: 'End Session',
+        'game_session_end' 	    : 'End Session',    // tapstream
+        'game_session_start' 	: 'Start Session',  //  tapstream
+
+        'YA0charge'     		: 'In-App Purchase',
+
+        'YA0crash'      		: 'App Crash',
+        'crash'         		: 'App Crash',
+
+        'YA0register'   		: 'Registration',
+
+        'YA0login'      		: 'Login',
+        'login'         		: 'Login',
+        'Login'         		: 'Login',
+    }
+
+    var translateEventType = function(type) {
+        if (EVENT_TYPE_TRANSLATIONS.hasOwnProperty(type)) {
+            return EVENT_TYPE_TRANSLATIONS[type];
+        } else {
+            return type;
+        }
+    }
+
+    $scope.showAllEvents = false;
+    $scope.allEventsCarat = $scope.showAllEvents ? UP_CARAT : DOWN_CARAT;
+    $scope.events = [];
+
+    $scope.fetchEvents = function() {
+
+        console.log("fetching!");
+
+        SDKDebug.get(
+            {
+                token:  gameSelected.ymc_id,
+                limit:  EVENTS_LEN,
+                timezone:$scope.timezone,
+            },
+
+            function(results){
+                var new_events = [];
+                results.forEach(function(result){
+                    new_events.push({
+                        type: translateEventType(result['event']),
+                        time: result['properties']['time'],
+                        ip_address: result['properties']['ip'],
+                        details: result,
+                        show_details: false,
+                        carat_char: DOWN_CARAT,
+                    });
+                });
+                $scope.events = new_events;
+                window.setTimeout($scope.scrollBottom, 1);
+            },
+            
+            function(err){
+                console.log(err);
+            }
+        );
+    }
+
+    $scope.toggleShowEvent = function(evt) {
+        $scope.setShowEvent(evt, !evt.show_details);
+    }
+
+    $scope.setShowEvent = function(evt, shown) {
+        evt.show_details = shown;
+        evt.carat_char = evt.show_details ? UP_CARAT : DOWN_CARAT;
+    }
+
+    $scope.toggleShowAllEvents = function() {
+        $scope.showAllEvents = !$scope.showAllEvents;
+        $scope.events.forEach(function(evt) {
+            $scope.setShowEvent(evt, $scope.showAllEvents);
+        });
+        $scope.allEventsCarat = $scope.showAllEvents ? UP_CARAT : DOWN_CARAT;
+    }
+
+    $scope.scrollBottom = function() {
+        var obj = document.getElementById('console-display');
+        console.log("scrolling...", obj);
+        obj.scrollTop = obj.scrollHeight;
+    }
+
+    $scope.fetchEvents();
+}
+
+function allBuyersController($scope,$translate,AllBuyers){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.all_buyers')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+
+    var list = []
+
+    var chart;
+    initChart(data,function(ch){
+        chart = ch;
+    });
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[]
+        data[0].key = $scope.getDataKey();
+        list =[]
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        AllBuyers.get(params,function(result){
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.buyer])
+                list.push([moment(element.ts*1000).format(),element.buyer])
+            });
+//            console.log('get data: ',data2[0])
+            $scope.rawData = list
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'all_buyers';
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+function ARPPUController($scope,$translate,AllBuyers){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.arppu')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+
+    var list = []
+
+    var chart;
+    initChart(data,function(ch){
+            chart = ch;
+        },
+        $scope.selected_currency
+    );
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[];
+        data[0].key = $scope.getDataKey();
+        list =[];
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        AllBuyers.get(params,function(result){
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.revenue==0?0:element.revenue/element.buyer])
+                list.push([moment(element.ts*1000).format(),element.revenue==0?0:element.revenue+'/'+element.buyer])
+            });
+//            console.log('get data: ',data2[0])
+            $scope.rawData = list
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'arppu';
+    $scope.isCurrencyBased = true;
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+function newBuyersController($scope,$translate,NewBuyers){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.new_buyers')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+
+    var list = []
+
+    var chart;
+    initChart(data,function(ch){
+        chart = ch;
+    });
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[]
+        data[0].key = $scope.getDataKey();
+        list = []
+        var params = {
+            first: 1,
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection
+        }
+        NewBuyers.get(params,function(result){
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.buyer])
+                list.push([moment(element.ts*1000).format(),element.buyer])
+            });
+            $scope.rawData = list
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'new_buyers';
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+
+
+function repeatedBuyersController($scope,$translate,NewBuyers){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.repeat_buyers')
+    }
+
+    var data = [{
+        area:true,
+        values:[]
+    }];
+    var list =[]
+
+    var chart;
+    initChart(data,function(ch){
+        chart = ch;
+    });
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[]
+        data[0].key = $scope.getDataKey();
+        list = []
+
+        //  [{ _id: 149, users: 44, revenue: 9.95 },...]
+        var params = {
+            first: 0,
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        NewBuyers.get(params,function(result){
+            console.log("repeatedbuyer get result:",result);
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.buyer])
+                list.push([moment(element.ts*1000).format(),element.buyer])
+
+            });
+            $scope.rawData = list
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'repeat_buyers';
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+function retentionController($scope,$http,$translate,Retention){
+
+    $scope.getDataKey = function getDataKey() {
+        return ($scope.language+'.charts.chart_text.users_header')
+    }
+
+    console.log('retention start');
+
+    function showChart(timeInterval){
+//        $http({method:'GET',url:APIversion+'/retention',params:{type:timeInterval,token:gameSelected.ymc_id}})
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        Retention.get(params,function(result){
+                console.log("Retention get result:",result);
+                $scope.timeInterval = timeInterval;
+                var retentionData=[]
+                result.forEach(function(row){
+                    var rowData1=[];    // for showing percent data
+                    var rowData2=[];    // for showing number data
+                    var cohortUser = 1
+                    for(var i=0;i<row.length;i++){
+                        if (0==i) {
+                            cohortUser = row[0].users
+                            rowData1.push(row[0]._id)
+                            rowData1.push(cohortUser)
+
+                            rowData2.push('');
+                            rowData2.push('');
+                        } else {
+//                            var rate = row[i].users>0?Math.floor(row[i].users/cohortUser*100):'0.00'
+                            var rate = row[i].users>0?(row[i].users/cohortUser*100).toFixed(2):'0.00'
+                            rowData1.push(rate+'%')
+
+                            rowData2.push(row[i].users);
+                        }
+
+                    }
+                    retentionData.push(rowData1);
+                    retentionData.push(rowData2);
+                })
+
+                var headData = [
+                        $translate($scope.language+'.charts.chart_text.time_header'),
+                        $translate($scope.language+'.charts.chart_text.users_header'),
+                    ]
+                for(var i=0;i<retentionData[0].length-2;i++){
+                    headData.push($translate($scope.language+'.charts.chart_text.interval_headers.'+timeInterval+(i+1)));
+                }
+                $scope.headData = headData
+
+                $scope.retentionData = retentionData;
+            });
+    }
+//    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'ymc_retention';
+    $scope.chartType = 'diag_table';
+    $scope.gameSelected = gameSelected;
+}
+
+
+function retention2Controller($scope,$http,$translate,Retention2){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.chart_text.users_header')
+    }
+
+    console.log('retention start');
+
+    function showChart(timeInterval){
+//        $http({method:'GET',url:APIversion+'/retention',params:{type:timeInterval,token:gameSelected.ymc_id}})
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        Retention2.get(params,function(result){
+            console.log("Retention get result:",result);
+            var retentionData=[]
+            result.forEach(function(row){
+                var rowData1=[];    // for showing percent data
+                var rowData2=[];    // for showing number data
+                var cohortUser = 1
+                for(var i=0;i<row.length;i++){
+                    if (0==i) {
+                        cohortUser = row[0].users
+                        rowData1.push(row[0]._id)
+                        rowData1.push(cohortUser)
+
+                        rowData2.push('');
+                        rowData2.push('');
+                    } else {
+//                            var rate = row[i].users>0?Math.floor(row[i].users/cohortUser*100):'0.00'
+                        var rate = row[i].users>0?(row[i].users/cohortUser*100).toFixed(2):'0.00'
+                        rowData1.push(rate+'%')
+
+                        rowData2.push(row[i].users);
+                    }
+
+                }
+                retentionData.push(rowData1);
+                retentionData.push(rowData2);
+            })
+
+            var headData = [
+                    $translate($scope.language+'.charts.chart_text.time_header'),
+                    $translate($scope.language+'.charts.chart_text.users_header'),
+                ]
+            for(var i=0;i<retentionData[0].length-2;i++){
+                headData.push($translate($scope.language+'.charts.chart_text.interval_headers.'+timeInterval+(i+1)));
+            }
+            $scope.headData = headData
+
+            $scope.retentionData = retentionData;
+        });
+    }
+//    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'retention';
+    $scope.chartType = 'diag_table';
+    $scope.gameSelected = gameSelected;
+}
+
+
+function sessionLengthController($scope,$translate,Session){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.titles.session_length')
+    }
+
+    var data = [{
+        area:true,values:[]
+    }];
+    var list = [];
+    var chart;
+    initChart(data,function(ch){chart = ch;});
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data[0].values=[];
+        data[0].key = $scope.getDataKey();
+        list =[];
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        Session.get(params,function(result){
+            result.forEach(function(element){
+                data[0].values.push([element.ts*1000,element.sess_len]);
+                list.push([moment(element.ts*1000).format(),element.sess_len]);
+            });
+            $scope.rawData = list;
+            updateChart(chart,data);
+            updateChart(chart,data); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'session_length';
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}
+
+function crashController($scope,$translate,Crash){
+
+    $scope.getDataKey = function getDataKey() {
+        return $translate($scope.language+'.charts.chart_text.total_crashes')
+    }
+
+    var list = [];
+    var chart;
+    var data1 = {key:$translate($scope.language+'.charts.chart_text.total_crashes'),bar:true,values:[]};
+    var data2 = {key:$translate($scope.language+'.charts.chart_text.users_affected'),values:[]};
+    initChart2([data1,data2],function(ch){chart = ch;});
+
+    function showChart(timeInterval){
+        $scope.timeInterval = timeInterval;
+        data1 = {key:$translate($scope.language+'.charts.chart_text.total_crashes'),bar:true,values:[]};
+        data2 = {key:$translate($scope.language+'.charts.chart_text.users_affected'),values:[]};
+
+        list =[];
+        var params = {
+            type: timeInterval,
+            token: gameSelected.ymc_id,
+            timezone: $scope.timezone,
+            collection_name: $scope.collection,
+        }
+        Crash.get(params,function(result){
+            result.forEach(function(element){
+                data1.values.push([element.ts*1000,element.crashs_total]);
+                data2.values.push([element.ts*1000,element.users]);
+                list.push([moment(element.ts*1000).format(),element.crashs_total]);
+            });
+            $scope.rawData = list;
+            updateChart(chart,[data1,data2]);
+            updateChart(chart,[data1,data2]); // there's a bug to display the area, double drawing fix it.
+        },function(err){
+            console.log(err);
+        });
+    }
+    $scope.timeInterval = 'day';
+    showChart($scope.timeInterval);
+    $scope.show = showChart;
+
+    $scope.chart_title = 'crashes';
+    $scope.chartType = 'graph';
+    $scope.gameSelected = gameSelected;
+}

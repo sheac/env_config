@@ -1,0 +1,349 @@
+var hostname      = require('os').hostname();
+var t2c2t = require('../tools/currency-translation/tier2currency2tier.js');
+var processNumber = process.env.INDEX_OF_PROCESS || 0;
+var YmcaLogger = require('../tools/logging/ymca-logger');
+var APPLICATION_NAME = 'YMCA Proxy '+hostname+' ['+processNumber+']';
+var options = {
+    // time in ms when the event loop is considered blocked
+    blockThreshold: 10
+};
+
+require('strong-agent').profile(
+    'fa2394b0fe56d17756b2c38a237cf7c9',
+    [APPLICATION_NAME, hostname, processNumber],
+    options // optional
+);
+
+var config = {
+    toYMCA:true,
+    toMixpanel:true,
+
+//    authServer:'http://192.168.1.147:8000/api/games?ymc_server_token=8b50b2a8be8a11e2878a080027dde1ce',
+    authServer:'http://api.ymcgames.com/api/games/tokens?ymc_server_token=8b50b2a8be8a11e2878a080027dde1ce',
+
+//    hostYMCA:"54.227.251.195",      //Amazon EC2
+    hostYMCA:'localhost',
+    portYMCA:4000,
+    hostMP:'api.mixpanel.com',
+    portMP:80
+};
+
+var mpBlacklist = ['fcffdba6be8d11e2b50b080027dde1ce']
+
+var http = require('http'),
+    querystring = require('querystring');
+var request = require('request');
+
+var express = require('express');
+var app = express();
+
+app.configure(function () {
+    app.use(express.bodyParser());
+    app.use(express.methodOverride());
+    app.use(app.router);
+    //app.use(express.static(path.join(application_root, "public")));
+    app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
+});
+
+var ymcaLogger = new YmcaLogger(['ProxyServer-Stage1']);
+
+
+var projects = [];
+
+function updateAuth(){
+    ymcaLogger.info('Updating games info');
+    request(config.authServer, function (error, response, body) {
+
+        if (!error && response.statusCode == 200) {
+            var content = JSON.parse(body);
+//        ymcaLogger.info(content.status);
+//        ymcaLogger.info(content.response);
+            if (content.status==1) {
+                projects = content.response;
+                ymcaLogger.info(projects);
+            } else {
+                ymcaLogger.error({
+                    action: updateAuth,
+                    error :content.response
+                }); // Print the google web page.
+            }
+        } else {
+            ymcaLogger.error('ERROR: auth api server did not respond!!!');
+        }
+    });
+
+}
+
+app.get('/updateAuth',function(req,res){
+    updateAuth();
+    res.send('Updated Auth Cache');
+});
+
+
+
+app.get('/',function(req,res){
+    res.send('YMC Analytics is working...V0.1.0924');
+    ymcaLogger.info("/...");
+});
+
+
+function decodeEvent(eventB64){
+
+    try {
+        var eventString = Buffer(eventB64,'base64').toString('utf8');
+    }
+    catch(e){
+        ymcaLogger.error({
+            action: "decodeEvent",
+            message: '--? ERROR @decodeEvent,Wrong BASE64 string ?--',
+            error: e,
+            'Base64 String': eventB64
+        });
+        return {err:"Wrong Base64 data"}
+    }
+
+    try {
+        var eventObj = JSON.parse(eventString);
+    }
+    catch(e){
+        ymcaLogger.error({
+            action: "decodeEvent",
+            message: '--? ERROR @decodeEvent,Wrong JSON string ?--',
+            error: e,
+            'JSON String': eventString
+        });
+        return {err:"Wrong JSON data"}
+    }
+
+    var ymc_id = eventObj.properties.YA0token;
+
+    if (projects[ymc_id]) {
+        ymcaLogger.info({
+            action: "decodeEvent",
+            verified_ymc_id: ymc_id
+        });
+        eventObj.properties.token = projects[ymc_id].mp_token;
+        return eventObj;
+    } else {
+        ymcaLogger.error({
+            action: "decodeEvent",
+            incorrect_ymc_id: ymc_id
+        });
+        return {err:"Wrong Token"}
+    }
+}
+
+app.post('/track',function(req,res){
+    var eventObj = decodeEvent(req.body.data);
+    if (eventObj.err) {
+        res.send("YAP-T0:"+eventObj.err);
+    } else {
+        eventObj.properties.ip = getClientIp(req);
+        eventObj.properties.time = parseInt(new Date()/1000);
+        var tier = t2c2t.convertPriceToTier(eventObj.properties.amount, eventObj.properties.currency);
+        var usd = t2c2t.convertTierToPrice(tier, 'USD');
+        eventObj.properties.YA0USD = usd;
+        reqTrack(eventObj,true);
+        res.send("YAP-T1");
+    }
+
+});
+
+app.post('/import',function(req,res){
+    var eventObj = decodeEvent(req.body.data);
+    if (eventObj.err) {
+        res.send("YAP-I0:"+eventObj.err);
+    } else {
+        reqTrack(eventObj,false);
+        res.send("YAP-I1");
+    }
+});
+
+app.get('/ts_postback',function(req,res){
+    console.log('Tapstream postback ==>',req.query);
+    res.send('TSPB-1');
+});
+
+function reqTrack(eventObj,isTrack){
+
+    ymcaLogger.info({
+        action: reqTrack,
+        OBJ: eventObj
+    });
+
+    // Object -> JSON -> Base64
+    eventString = JSON.stringify(eventObj);
+    eventB64 = Buffer(eventString).toString('base64');
+
+    var request_data,query;
+    if (isTrack) {
+        request_data = {
+            data:eventB64,
+            ip:0,
+            test:1
+        };
+        query = querystring.stringify(request_data);
+        if (config.toMixpanel){
+            var permitMixpanel = true
+            mpBlacklist.forEach(function(blackId){
+                if (blackId == eventObj.properties.YA0token) {
+                    permitMixpanel = false
+                    // TODO: there's no break in forEach, considering some()
+                }
+            })
+
+            if (permitMixpanel) {
+                sendToServer(config.hostMP,config.portMP,'/track',query);
+            }
+        }
+        if (config.toYMCA) sendToServer(config.hostYMCA,config.portYMCA,'/track',query);
+
+    } else {
+        var mp_key = projects[eventObj.properties.YA0token]['mp_key'];
+        ymcaLogger.info({
+            action: 'reqTrack',
+            mixpanel_key: mp_key
+        });
+        request_data = {
+            data:eventB64,
+            api_key:mp_key,                 //project api_key mixpanel
+            verbose:1
+        };
+        query = querystring.stringify(request_data);
+        if (config.toMixpanel) sendToServer(config.hostMP,config.portMP,'/import',query);
+        if (config.toYMCA) sendToServer(config.hostYMCA,config.portYMCA,'/import',query);
+
+    }
+
+
+}
+
+/*
+app.post('/import',function(req,res){
+    ymcaLogger.info('received request /import...');
+    res.send("YMCA import 1");
+
+    var eventB64 = req.body.data;
+    var request_data = {
+        data:eventB64,
+        api_key:'3ca0df3a92b9e50f622068a7b1b703f1',                 //project api_key mixpanel
+        verbose:1
+//        ip:0,
+//        test:1
+    };
+    var query = querystring.stringify(request_data);
+
+    if (config.toMixpanel) sendToServer(config.hostMP,config.portMP,'/import',query);
+    if (config.toYMCA) sendToServer(config.hostYMCA,config.portYMCA,'/import',query);
+
+});
+*/
+// for mixpanel, use 'track' first, to set up the database, then use 'import'
+function sendToServer(host,port,endpoint,query){
+    var post_options_mx = {
+        host: host,
+        port: port,
+        path: endpoint,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': query.length
+        }
+    };
+
+    // Set up the request
+    var req = http.request(post_options_mx, function(res) {
+        res.setEncoding('utf8');
+        res.on('data', function (chunk) {
+            ymcaLogger.info({
+                action: 'sendToServer',
+                host: host,
+                chunk: chunk
+            });
+        });
+        res.on('end', function(){
+//            ymcaLogger.info('.');
+        })
+    })
+    .on('error', function(err) {
+        ymcaLogger.info({
+            action: 'sendToServer',
+            message: "Error sending data",
+            host: host,
+            port: port,
+            error: err
+        });
+    });
+
+    req.write(query);
+    req.end();
+}
+
+/*
+function sendToYMCA(endpoint,query){
+    var post_options_mx = {
+        host: config.hostYMCA,
+        port: config.portYMCA,
+        path: endpoint,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': query.length
+        }
+    };
+
+    // Set up the request
+    var req = http.request(post_options_mx, function(res) {
+        res.setEncoding('utf8');
+        res.on('data', function (chunk) {
+            ymcaLogger.info('YMCA Response: ' + chunk);
+        });
+        res.on('end', function(){
+            ymcaLogger.info('.');
+        })
+    });
+
+    req.write(query);
+    req.end();
+}
+*/
+
+//    req.connection.remoteAddress;   //can't get IP behind router or proxy
+function getClientIp(req) {
+    var ipAddress;
+    // Amazon EC2 / Heroku workaround to get real client IP
+    var forwardedIpsStr = req.header('x-forwarded-for');
+    if (forwardedIpsStr) {
+        // 'x-forwarded-for' header may return multiple IP addresses in the format: "client IP, proxy 1 IP, proxy 2 IP" so take the first one
+        var forwardedIps = forwardedIpsStr.split(',');
+        ipAddress = forwardedIps[0];
+    }
+    if (!ipAddress) {
+        // Ensure getting client IP address still works in
+        // development environment
+        ipAddress = req.connection.remoteAddress;
+    }
+    return ipAddress;
+};
+
+
+var port = process.env.PORT || 3000;
+app.listen(port, function() {
+    ymcaLogger.info(
+        '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n' +
+        "=======================================================================\n"+
+        "YMCA Proxy Started. Listening on " + port.toString() + "\n" +
+        "YMCA Server >>> " + config.hostYMCA + ":" + config.portYMCA.toString()
+    );
+});
+
+// Don't crash on errors.
+process.on('uncaughtException', function(err) {
+    // handle the error safely
+    ymcaLogger.error({
+        message: 'uncaught exception',
+        error: err
+    });
+});
+
+updateAuth();

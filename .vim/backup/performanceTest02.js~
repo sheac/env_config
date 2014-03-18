@@ -1,0 +1,129 @@
+/**
+ * Created by william on 2013-09-09.
+ */
+
+var config = {
+    //database:'test',
+    //database:'mongodb0.ymcnetwork.com:27017,mongodb1.ymcnetwork.com:27017,mongodb2.ymcnetwork.com:27017/test?slaveOk=true',
+    database: '54.237.36.29:27017,54.221.7.28:27017,54.227.222.34:27017/test?slaveOk=true',
+    collectionEvent:'data1'
+};
+
+var numActions = 5
+var numEvents = 100000
+
+var mongojs = require('mongojs');
+
+var db = mongojs.connect(config.database, [config.collectionEvent]);
+console.log("connected to database:", config.database, "with collection", config.collectionEvent);
+var collection =  db.collection(config.collectionEvent);
+
+
+
+var actions = []
+
+for (var i=0;i<numActions;i++){
+    var action = "action_"+ parseInt(Math.random()*1000).toString()
+    actions.push(action)
+}
+
+//console.log(actions)
+console.log('actions number :',actions.length)
+
+getRandomEvent = function(){
+    var evt = {}
+    var numDid = parseInt(Math.random()*numActions)
+    for (var i=0;i<numDid;i++){
+        var key = 'do'+ i.toString()
+        evt[key] = actions[i]
+    }
+    return evt
+}
+
+testInsertData = function(){
+
+//    console.log('Start create data :',numEvents)
+
+    var timeStart = new Date()
+    var counter = 0
+    for (var i=0;i<numEvents;i++){
+        ++counter
+        var evt = getRandomEvent()
+        evt.id = i;
+        evt.amount = 1
+
+//        console.log('---------------\n',evt)
+
+        collection.save(evt,function(err,saved){
+            if (err || !saved) {
+                console.log('db err:',err)
+            }
+            if (counter%10000===0){
+                console.log('processed %d ... %d s',counter,(new Date()-timeStart)/1000);
+            }
+            --counter;
+            if (counter===0) {
+                console.log('Created records %d time:%d',numEvents,(new Date()-timeStart)/1000)
+            }
+        });
+    }
+
+}
+
+testUpdateAllData = function(){
+
+//    console.log('Start update data :',numEvents)
+
+    var timeStart = new Date()
+    var counter = 0
+    for (var i=0;i<numEvents;i++){
+        ++counter
+
+        var evt = getRandomEvent()
+        evt.id = i;
+        evt.amount = 2
+
+        collection.update({id:i},evt,{multi:false},function(err,saved){
+            if (err || !saved) {
+                console.log('db err:',err)
+            }
+            if (counter%10000===0){
+                console.log('processed %d ... %d s',counter,(new Date()-timeStart)/1000);
+            }
+            --counter;
+            if (counter===0) {
+                console.log('Update records %d time:%d',numEvents,(new Date()-timeStart)/1000)
+            }
+        });
+    }
+
+}
+
+testUpdateIncData = function(){
+
+//    console.log('Start update data :',numEvents)
+
+    var timeStart = new Date()
+    var counter = 0
+    for (var i=0;i<numEvents;i++){
+        ++counter
+
+        collection.update({id:i},{$inc:{amount:10}},{multi:false},function(err,saved){
+            if (err || !saved) {
+                console.log('db err:',err)
+            }
+            if (counter%10000===0){
+                console.log('processed %d ... %d s',counter,(new Date()-timeStart)/1000);
+            }
+            --counter;
+            if (counter===0) {
+                console.log('Update records %d time:%d',numEvents,(new Date()-timeStart)/1000)
+            }
+        });
+    }
+
+}
+
+testInsertData()
+testUpdateAllData()
+testUpdateIncData()

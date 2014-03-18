@@ -1,0 +1,154 @@
+/*
+    Run the following to test that the data migration went smoothly
+*/
+
+var db = require('../../reporter/database.js').db;
+var db_events = db.collection('events');
+var db_sdk_debug = db.collection('sdk_debug');
+var moment = require('moment-timezone');
+var async = require('async');
+var _ = require('underscore');
+var assert = require('assert');
+
+var gameIds = [];
+var results = [];
+
+var populateGameIds = function populateGameIds(outerCallback) {
+    async.eachSeries(
+            [db_events, db_sdk_debug],
+            function populateGameIdsFromCollection(collection, innerCallback) {
+                collection.distinct('properties.YA0token', function(err, tokens) {
+                    gameIds = _.union(gameIds, tokens);
+                    innerCallback();
+                });
+            },
+            function(err) {
+                if (err) {throw err;}
+                outerCallback();
+            });
+}
+
+var checkTimePacificExists = function checkTimePacificExists(collectionName, gameId) {
+        return function checkTimePacificExists_inner(callback) {
+            var test = "No "+collectionName+" docs with YA0token "+gameId+" are without properties.time_pacific:";
+            console.log("\t",test);
+            db.collection(collectionName).find(
+                    {
+                        'properties.time_pacific':  {$exists: false},
+                        'properties.time':          {$exists: true},
+                        'propertes.YA0token':       gameId,
+                    },
+                    function assertNone(err, docs) {
+                        if (err) { throw err; }
+                        result = (docs.length == 0);
+                        console.log("\t\tresult:", result);
+                        results.push({test: test, result: result});
+                        callback(null);
+                    });
+        }
+}
+
+var checkRangedDocsAreNHoursBack = function checkRangedDocsAreNHoursBack(   startTime,
+                                                                            endTime,
+                                                                            diffMillis,
+                                                                            collectionName,
+                                                                            YA0token,
+                                                                            testName
+                                                                        ) {
+        return function checkRangedDocsAreNHoursBack_inner(callback) {
+            console.log("\t",testName);
+            var expectationCalculator = {$subtract: ['$properties.time', diffMillis]};
+            db.collection(collectionName).aggregate([
+                {
+                    $match: {
+                        'properties.time':  {$gt: startTime},
+                        'properties.time':  {$lt: endTime},
+                        'properties.YA0token': YA0token,
+                    }
+                },
+                {
+                    $project: {
+                        '_id': 0,
+                        'expectedPacTime':  expectationCalculator,
+                        'actualPacTime':    '$properties.time_pacific',
+                    }
+                },
+                {
+                    $project: {
+                        'difference': {$cmp: ['$expectedPacTime', '$actualPacTime']}
+                    }
+                },
+                {
+                    $match: {
+                        'difference': {$ne: 0}
+                    }
+                },
+            ],
+            function(err, aggrResult) {
+                if (err) { throw err; }
+                var result = aggrResult.length == 0;
+                console.log("\t\tresult:", result);
+                results.push({test: testName, result: result});
+                callback(null);
+            })
+        }
+}
+
+var checkDSTDocsAre7HoursBack = function checkDSTDocsAre7HoursBack(collectionName, gameId) {
+        var DSTEnd      = new Date([2013, 11, 3]),
+            DSTStart    = new Date([2013, 3, 10]);
+        var millisIn7Hours = (7 * 60 * 60 * 1000);
+        var testName = 'All '+collectionName+' docs with YA0token '+gameId+' during 2013 DST have pactime == time - 7 hours';
+        return checkRangedDocsAreNHoursBack(DSTStart, DSTEnd, millisIn7Hours, collectionName, gameId, testName);
+}
+
+var checkNonDSTDocsAre8HoursBack = function checkNonDSTDocsAre8HoursBack(collectionName, gameId) {
+        var DSTEnd      = new Date([2013, 11, 3]),
+            DSTStart    = new Date([2014, 3, 8]);
+        var millisIn8Hours = (8 * 60 * 60 * 1000);
+        var testName = 'All '+collectionName+' docs with YA0token '+gameId+' after 2013 DST have pactime == time - 8 hours';
+        return checkRangedDocsAreNHoursBack(DSTEnd, DSTStart, millisIn8Hours, collectionName, gameId, testName);
+}
+
+async.series([
+        populateGameIds,
+
+        function(callback) {
+            console.log('gameIds:\n', gameIds);
+            callback();
+        },
+
+        function(outerCallback) {
+            async.eachSeries(gameIds, function(gameId, innerCallback) {
+                console.log("Testing game:", gameId);
+                async.series([
+                    checkTimePacificExists('events', gameId),
+                    checkTimePacificExists('sdk_debug', gameId),
+
+                    checkDSTDocsAre7HoursBack('events', gameId),
+                    checkDSTDocsAre7HoursBack('sdk_debug', gameId),
+
+                    checkNonDSTDocsAre8HoursBack('events', gameId),
+                    checkNonDSTDocsAre8HoursBack('sdk_debug', gameId),
+                ],
+                function(err) {
+                    if (err) {throw err;}
+                    innerCallback();
+                });
+            },
+            function(err) {
+                if (err) {throw err;}
+                outerCallback();
+            });
+        },
+    ],
+    function(err) {
+        if (err) { throw err; }
+
+        _.each(results, function(result) {
+            assert(
+                result.result,
+                "Test failed:\n\t", result.test);
+        });
+        process.exit(0);
+    });

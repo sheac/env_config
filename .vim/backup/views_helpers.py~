@@ -1,0 +1,4 @@
+def build_template_vars(request):
+    res = {}
+    res['is_admin'] = request.session.get.('is_admin', False)
+    return res

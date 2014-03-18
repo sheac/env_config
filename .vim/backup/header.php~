@@ -1,0 +1,37 @@
+<div class="topsection">
+
+    <!-- Expanded navigation box -->
+    <div class="navigationbox">
+        <div class="alignnav">
+
+            <div class="ymggameslogo floatleft height100"><div class=" divlink"><a href="./index.html"></a></div></div>
+
+            <!-- Main Navigation -->
+            <div class="floatleft height100">
+                <div class="gameslink navigationlinks"><div class="divlink"><a href="games/index.html"></a></div></div>
+            </div>
+
+            <div class="floatright height100">
+                <div class="facebook externallinks"><div class="divlink"><a target="_blank" href="https://www.facebook.com/ymcgames"></a></div></div>
+                <div class="twitter externallinks"><div class="divlink"><a target="_blank" href="https://twitter.com/GamesYMC"></a></div></div>
+            </div>
+
+        </div><!-- End alignnav -->
+    </div><!-- End navigationbox -->
+
+
+    <!-- Collapsed navigation box -->
+    <div class="collapsednavigationbox">
+        <div class="alignnav">
+
+            <div class="mobilehometicon floatleft height100"><div class=" divlink"><a href="./index.html"></a></div></div>
+            <div class="centermobilelogo height100">
+                <div class="mobileymcgameslogo height100"><div class=" divlink"><a href="./index.html"></a></div></div>
+            </div>
+            <div class="mobilenavigaitonicon floatright height100"><div class=" divlink"><a href="./index.html"></a></div></div>
+
+        </div><!-- End alignnav -->
+    </div><!-- End collapsednavigationbox -->
+
+    <div class=""></div>
+<!--</div>--><!-- End topsection>

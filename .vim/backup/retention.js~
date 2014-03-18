@@ -1,0 +1,274 @@
+var database = require('../database');
+var utime = require('../lib/utime').getTimePoint
+var fillGap = require('../lib/utime').fillGap
+
+var YmcaLogger = require('../../tools/logging/ymca-logger'),
+    ymcaLogger = new YmcaLogger(['AggregationController-BuyerAll']);
+
+var Q = require('q');
+var moment = require('moment');
+
+/**
+ * Date method difference !!!
+ *
+ * Mongodb:
+ *      $dayOfYear  1 ~ 366
+ *      $week       0 ~ 53
+ *      $month      1 ~ 12
+ *
+ * Moment:
+ *      dayOfYear   1 ~ 366
+ *      week        1 ~ 54
+ *      month       0 ~ 11
+ *
+ */
+
+// API:  /retention/
+exports.api = function(req,res){
+
+    var type = req.query.type;
+    var ymc_id = req.query.token;
+    var timezone = req.query.timezone;
+    var collection = database.collectionFromName(req.query.collection_name);
+
+    ymcaLogger.log({
+        type: type,
+        collection: req.query.collection_name,
+        ymc_id: ymc_id
+    });
+
+
+
+    var span = 10;
+
+    var result = utime[type](null, null, timezone)
+
+    var startTime = result.from_time
+    var endTime = result.to_time
+    var group = result.group
+
+    ymcaLogger.log({group:group})
+
+
+    if (result.error){
+        res.send({error:result.error})
+    } else {
+        ymcaLogger.log({
+            startTime: startTime,
+            endTime: endTime
+        });
+
+        var queue = [];
+
+        for (var i=0;i<span-1;i++){
+//        for (var i=0;i<2;i++){
+
+//            var d1 = new Date(firstDay.getTime() + i *24*60*60*1000).toISOString();
+//            var d2 = new Date(firstDay.getTime() + (i+1) *24*60*60*1000).toISOString();
+//            var d1 = startTime.getTime() + i *24*60*60*1000 ;
+//            var d2 = startTime.getTime() + (i+1) *24*60*60*1000 ;
+//            ymcaLogger.log("d1,d2 = ",d1,d2);
+//            queue.push(getNewUserList(d1,d2));
+
+            var startT,joinT
+
+            switch(type){
+                case 'day':
+//                    startT = new Date(moment(endTime).add('days',i-span).format('M D YYYY'))
+                    startT = new Date(moment(endTime).utc().add('days',i-span))
+                    break
+                case 'week':
+                    startT = new Date(moment(endTime).utc().add('weeks',i-span).format('M D YYYY'))
+                    break
+                case 'month':
+                    startT = new Date(moment(endTime).utc().add('months',i-span).format('M D YYYY'))
+                    break
+            }
+            result = utime[type](startT, null, timezone)
+            joinT = result.join_time
+            queue.push(getNewUserList(ymc_id,startT,joinT,endTime,type));
+        }
+
+
+        Q.all(queue).then(function(ful) {
+            // All the results from Q.all are on the argument as an array
+            ymcaLogger.log({Q_results: {got: ful}});
+            res.send(ful);
+        }, function(rej) {
+            // The first rejected (error thrown) will be here only
+            ymcaLogger.log({Q_results: {rejected: rej}});
+        }).fail(function(err) {
+            // If something went wrong, then we catch it here, usually when there is no rejected callback.
+            ymcaLogger.log({Q_results: {failed: err}});
+        }).fin(function() {
+            // Finally statement; executed no matter of the above results
+            ymcaLogger.log({Q_results: 'done'});
+        });
+
+    }
+
+
+
+    // ----------------------------------------------
+
+
+    function getNewUserList(ymc_id,firstDay,joinDay,endTime,type){
+
+        var deferred = Q.defer();
+
+        var outerMatchQuery = {
+                    "properties.YA0token":ymc_id,
+                    event: {$in:["register","NewAccount","YA0register"]},
+                };
+        switch(timezone) {
+            case "GMT":
+                outerMatchQuery['properties.time'] = {"$gte": firstDay, "$lte": joinDay}
+                break;
+            case "pacific":
+                outerMatchQuery['properties.time_pacific'] = {"$gte": firstDay, "$lte": joinDay}
+                break;
+        }
+
+        // YA0signup
+        collection.aggregate([{
+            $match: outerMatchQuery
+        },{
+            $group:{_id:null,new_user:{$addToSet:"$properties.distinct_id"}}
+        }],function(err,result){
+
+
+            var newcomer;
+            if (result.length>0){
+                newcomer = result[0].new_user;
+            } else {
+                newcomer = [];
+            }
+
+            var innerMatchQuery = {
+                        "properties.YA0token":ymc_id,
+                        event: {$in:["login","Login","YA0login"]},
+                        "properties.distinct_id":{$in:newcomer}
+                    };
+            switch(timezone) {
+                case "GMT":
+                    innerMatchQuery['properties.time'] = {"$gte": firstDay, "$lte": endTime}
+                    break;
+                case "pacific":
+                    innerMatchQuery['properties.time_pacific'] = {"$gte": firstDay, "$lte": endTime}
+                    break;
+            }
+
+            collection.aggregate(
+                [
+                    {
+                        $match: innerMatchQuery
+                    },{
+                    $group:{
+                        _id:group
+
+                    }
+                },{
+                    $group:{
+//                        _id:"$_id.indexOfTime",
+                        _id:{y:"$_id.year",t:"$_id.indexOfTime"},
+                        users: {$sum:1}
+                    }
+                },{
+                    $sort:{_id:1}
+                }
+                ],
+                function(err,result){
+//                    ymcaLogger.log('Time Range:',firstDay,moment(endTime).format());
+                    ymcaLogger.log({result: {users: newcomer.length, agg: result}});
+/*
+                    var dataMap = {};
+                    result.forEach(function(element){
+//                        dataMap[element._id]=element.users;
+                        dataMap[element._id.y.toString()+element._id.t.toString()]=element.users;
+                    })
+                    ymcaLogger.log('\ndataMap:',dataMap,'\n')
+
+                    // fill the empty with 0
+//                    var d1 = moment(firstDay).dayOfYear();
+//                    var d2 = moment(endTime).dayOfYear();
+
+                    var d1,d2,diff
+                    d1 = moment(firstDay)
+                    d2 = moment(endTime)
+
+                    switch(type){
+                        case 'day':
+                            diff = d2.diff(d1,'days')
+                            break
+                        case 'week':
+                            diff = d2.diff(d1,'weeks')
+                            break
+                        case 'month':
+                            diff = d2.diff(d1,'months')
+                            break
+                    }
+
+//                    ymcaLogger.log('firstDay,endTime',firstDay,endTime)
+                    ymcaLogger.log('d1=',d1.format(),"d2=",d2.format(),"diff=",diff)
+
+                    var dayUser = [];
+//                    for (var day = d1;day<=d2;day++){
+//                        if (dataMap[day.toString()]) {
+//                            dayUser.push({_id:day,users:dataMap[day.toString()]});
+//                        } else {
+//                            dayUser.push({_id:day,users:0});
+//                        }
+//                    }
+//                    ymcaLogger.log("d1,d2 = ",d1,d2,dayUser);
+//                    deferred.resolve(result);
+
+                    for(var i=0;i<diff+1;i++){
+                        var y = d1.year()
+                        var t
+                        // d1 add 1 means: d1 = d1+1
+                        switch(type){
+                            case 'day':
+                                t = d1.add(type+'s',1).dayOfYear()  -1
+                                break
+                            case 'week':
+                                t = d1.add(type+'s',1).week()-1     -1
+                                break
+                            case 'month':
+                                t = d1.add(type+'s',1).month()+1    -1
+                                break
+                        }
+                        var key = y.toString()+ t.toString()
+                        ymcaLogger.log('key=',key,"i=",i)
+                        if (dataMap[key]) {
+                            dayUser.push({_id:{y:y,t:t},users:dataMap[key]})
+                        } else {
+                            dayUser.push({_id:{y:y,t:t},users:0})
+                        }
+                    }
+                    ymcaLogger.log('\ndayUser =>\n',dayUser,'\n')
+*/
+                    var dayUser = fillGap(firstDay,endTime,type,result)
+                    // remove the data in firstDay
+                    dayUser.shift()
+                    // put the new registered user in firstDay for show
+                    dayUser.unshift({_id:moment(firstDay).format('MMM D YYYY'),users:newcomer.length})
+
+                    deferred.resolve(dayUser);
+                }
+            );
+
+
+        })
+
+
+        return deferred.promise;
+
+
+
+    }
+
+
+
+
+}
+

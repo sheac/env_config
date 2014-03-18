@@ -1,0 +1,92 @@
+<div id="home" class='middle'>
+    <div class='welcome'>
+        <h2><?php echo __('Welcome to the YMC Developer Center') ?></h2>
+        <br/>
+        <p>
+            <?php echo HTML::chars(__("We make games publishing on our platform simple and easy.")) ?><br/>
+            <?php echo HTML::chars(__("Get exposure to your product across our large user base.")) ?><br/>
+            <?php echo HTML::chars(__("Free access to all our publishing SDK and analytics tools.")) ?><br/>
+        </p>
+    </div>
+
+    <style>
+        .holidays-notice {
+            text-align: left;
+            margin: 20px 0 80px;
+        }
+        .holidays-notice strong {
+            color: #86d002;
+        }
+        .holidays-notice ul {
+            list-style-type: disc;
+            padding-left: 40px !important;
+        }
+        .holidays-notice h1 {
+            text-align: center;
+        }
+        .holidays-notice p {
+            margin: 0 30px 0 30px;
+        }
+    </style>
+
+    <div class="holidays-notice box3 gradient">
+        <div class="toptexture"></div>
+        <br/>
+        <h1>Important</h1>
+        <br/>
+        <p>
+            YMC will be closed for the holidays from <strong>December 24, 2013 to January 1, 2014 (inclusive)</strong>.
+        </p>
+        <br/>
+        <p>
+            Our system will be remotely monitored during this time, however if an emergency occurs that
+            requires immediate attention (e.g. server outage, reindeer malfunction),  please contact Raymond Cheung:
+        </p>
+        <br/>
+        <ul>
+            <li>
+                Email: <strong>raymond [at-sign] ymcnetwork [dot] com</strong>
+                <br/>
+                &nbsp;&nbsp;&#187;&nbsp;Please CC Jennifer Dowding at: <strong>jennifer [at-sign] ymcnetwork [dot] com</strong>
+            </li>
+            <li>
+                Phone: <strong>778-688-"ninety-one, ninety-three"</strong>
+            </li>
+            <li>
+                WeChat: <strong>raymondc1887</strong>
+            </li>
+        </ul>
+        <br/>
+        <div class="bottomtexture"></div>
+    </div>
+
+
+    <br/>
+
+    <div class='getting-started middle'>
+        <div class='box3 gradient'>
+            <div class="toptexture"></div>
+            <div class='step'>
+                <?php echo HTML::image(Path::image('users.png')) ?><br/>
+                <p>1. <?php echo HTML::chars(__("Create a YMC Developer Account")) ?></p>
+            </div>
+            <div class='step'>
+                <?php echo HTML::image(Path::image('details.png')) ?><br/>
+                <p>2. <?php echo HTML::chars(__("Localize your assets")) ?></p>
+            </div>
+            <div class='step'>
+                <?php echo HTML::image(Path::image('upload-arrow.png')) ?><br/>
+                <p>3. <?php echo HTML::chars(__("Upload your build and submit")) ?></p>
+            </div>
+            <div class="bottomtexture"></div>
+        </div>
+    </div>
+
+    <div class='clear'></div><br/><br/>
+    <div class='hr'></div><br/>
+
+    <?php echo HTML::anchor(Path::users_signup(), __("Get Started!"), array('class' => 'button')) ?>
+    <?php echo HTML::anchor(Path::users_login(), __("Sign in!"), array('class' => 'button')) ?>
+    <br/><br/>
+
+</div>

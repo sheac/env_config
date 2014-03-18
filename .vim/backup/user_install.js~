@@ -1,0 +1,66 @@
+/**
+ * Created by William Guan on 2013-12-11.
+ */
+
+
+var database = require('../database');
+var collectionEvent = database.eventCollection;
+var utime = require('../lib/utime').getTimePoint
+var fillGap = require('../lib/utime').fillGap
+
+exports.api = function(req,res){
+
+    var type = req.query.type;
+    var ymc_id = req.query.token;
+    var timezone = req.query.timezone;
+
+    var startTime,endTime,
+        group={};
+
+    var result = utime[type](null, null, timezone)
+    console.log(result)
+
+    startTime = result.from_time
+    endTime = result.to_time
+    group = result.group
+
+    var matchQuery = {
+                "properties.YA0token":ymc_id,
+                event: "YA0birth",
+            };
+    switch(timezone) {
+        case "GMT":
+            matchQuery['properties.time'] = {"$gte": startTime, "$lt": endTime}
+            break;
+        case "pacific":
+            matchQuery['properties.time_pacific'] = {"$gte": startTime, "$lt": endTime}
+            break;
+    }
+
+    if (result.error){
+        res.send({error:result.error})
+    } else {
+
+        collectionEvent.aggregate(
+            [{
+                $match: matchQuery
+            },{
+                $group:{
+                    _id:group
+                }
+            },{
+                $group:{
+                    _id:{y:"$_id.year",t:"$_id.indexOfTime"},
+                    users: {$sum: 1 }
+                }
+            },{
+                $sort:{_id:1}
+            }],
+            function(err,result){
+                console.log(result);
+                var result2 = fillGap(startTime,endTime,type,result)
+                res.send(result2);
+            });
+    }
+};
+

@@ -1,0 +1,980 @@
+html, body, div, span, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+table, caption, tbody, tfoot, thead, tr, th, td {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+body, html {
+	height: 100%;
+	background-color: #e44524;
+	font-family: 'Roboto', sans-serif;
+}
+
+body{
+	overflow-x: hidden;
+}
+
+
+
+.transitionall{
+		-webkit-transition: all .3s ease;
+		-moz-transition: all .3s ease;
+		-ms-transition: all .3s ease;
+		-o-transition: all .3s ease;
+}
+
+.clear{
+	clear: both;
+}
+
+
+.floatleft{
+	float: left;
+}
+
+.floatright{
+	float: right;
+}
+
+.divlink{
+	position: relative;
+	width: 100%;
+    height: 100%;
+}
+
+.alignright{
+	text-align: right;
+}
+
+
+
+.divlink a{
+	position: absolute;
+    top: 0;
+    left: 0;
+  	width: 100%;
+    height: 100%;
+    text-decoration: none; /* No underlines on the link */
+    z-index: 99; /* Places the link above everything else in the div */
+    background-color: #FFF; /* Fix to make div clickable in IE */
+    opacity: 0; /* Fix to make div clickable in IE */
+    filter: alpha(opacity=1); /* Fix to make div clickable in IE */
+}
+
+.dynamicheight a{
+	position: absolute;
+    top: 0;
+    left: 0;
+  	width: 100%;
+    height: 100%;
+    text-decoration: none; /* No underlines on the link */
+    z-index: 10; /* Places the link above everything else in the div */
+    background-color: #FFF; /* Fix to make div clickable in IE */
+    opacity: 0; /* Fix to make div clickable in IE */
+    filter: alpha(opacity=1); /* Fix to make div clickable in IE */
+}
+
+a{
+	text-decoration: none;
+}
+
+.tempcenter{
+	width: 100%;
+	text-align: center;
+}
+
+.tempinline{
+	display: inline;
+	position: relative;
+	top: -5px;
+}
+
+
+
+.test{
+	position: relative;
+	background-color: blue;
+	z-index: 1;
+	height: 100%
+}
+
+.inlinelink{
+	position: static !important;
+	width: auto !important;
+    height: auto !important;
+   	opacity: 1 !important;
+}
+
+.inlinelink a{
+	position: static !important;
+    text-decoration: none !important; /* No underlines on the link */
+    z-index: 99 !important; /* Places the link above everything else in the div */
+   	opacity: 1 !important;
+}
+
+
+
+
+
+/* ----------------- TABLE -----------------  */
+
+.aligntop{
+	vertical-align: top;
+}
+
+.alignbottom{
+	vertical-align: bottom;
+}
+
+.alignmiddle{
+	vertical-align: middle;
+}
+
+.extratdspacing{
+	margin-right: 20px;
+}
+
+
+/* ----------------- FONTS -----------------  */
+
+
+.whitefont{
+	color: #FFFFFF;
+}
+
+.darkgreyfont{
+	color: #3e3c39;
+}
+
+.lightgreyfont{
+	color: #778691;
+}
+
+.redfont{
+	color: #e44524;
+}
+
+.fontset1{
+	font-weight: 300;
+	letter-spacing:1px;
+	font-size: 18px;
+	text-transform:uppercase;
+	display: inline-block;
+}
+
+.fontset2{
+	font-weight: 700;
+	letter-spacing:1px;
+	font-size: 35px;
+	text-transform:uppercase;
+	line-height: 1;
+}
+
+.fontset3{
+	font-weight: 300;
+	font-size: 15px;
+	display: inline-block;
+}
+
+.fontset4{
+	font-weight: 100;
+	font-size: 14px;
+	display: inline-block;
+	line-height:130%
+}
+
+.fontset5{
+	font-weight: 100;
+	font-size: 12px;
+	display:inline;
+}
+
+/* ----------------- CONTAINERS -----------------  */
+
+
+.topsection{
+	max-width: 100%;
+	position: relative;
+	display:block;
+	height: 600px;
+	background-color: #191919;
+}
+
+.topsection2{
+	max-width: 100%;
+	position: relative;
+	display:block;
+	height: 120px;
+}
+
+.navigationbox{
+	height: 120px;
+	width: 100%;
+	background: url("../img/blackness.png");
+	position: absolute;
+	top: 0px;
+	z-index: 95;
+}
+
+.navigationbox2{
+	height: 120px;
+	width: 100%;
+	background-color: black;
+	position: absolute;
+	top: 0px;
+	z-index: 95;
+}
+
+
+
+.topbanner{
+	width: 100%;
+	position: absolute;
+	top: 0px;
+	height: 100%;
+}
+
+.topbannerimages{
+	max-width: 1895px;
+	min-width: 1140px;
+	margin:0;
+	padding:0;
+	margin-right: auto;
+	margin-left: auto;
+	height: 100%;
+	}
+
+.alignnav{
+	margin-right: auto;
+	margin-left: auto;
+	max-width: 1140px;
+	min-width: 1140px;
+	height: 100%;
+}
+
+
+
+/* ----------------- TOP HERO BANNER -----------------  */
+
+
+.dynamicheight{
+	width: 100%;
+	max-width: 1895px;
+	min-width: 1140px;
+	overflow: auto;
+	position: absolute;
+	top: 0px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.firstimage{
+    background: url("../img/image_1.png") no-repeat center;
+    background-size: cover;
+    text-align:right;
+	opacity: 1;
+	height: 100%;
+}
+
+
+.secondimage{
+    background: url("../img/image_2.png") no-repeat center;
+    background-size: cover;
+    text-align:right;
+	height: 100%;
+	opacity: 0;
+}
+
+
+.thirdimage{
+	background: url("../img/image_3.png") no-repeat center;
+    background-size: cover;
+    text-align:right;
+	height: 100%;
+	opacity: 0;
+}
+
+.bannertransition{
+    transition: opacity .5s ease;
+	-moz-transition: opacity .5s ease;
+	-webkit-transition: opacity .5s ease;
+	-o-transition: opacity .5s ease;
+}
+
+
+/* ----------------- SUBTITLE -----------------  */
+
+
+
+
+.subtitletextcontainer{
+	width: 100%;
+	height: 100%;
+	position: relative;
+}
+
+.subititleplacment{
+	position: absolute;
+	bottom: 30px;
+	width: 100%;
+}
+
+.subtitlekeepedge{
+	margin-right: auto;
+	margin-left: auto;
+	max-width: 1140px;
+	min-width: 1140px;
+}
+
+
+.subtitlecentering{
+	text-align: center;
+}
+
+
+
+.subtiltetext{
+	color: #FFFFFF;
+	font-size: 30px;
+}
+
+
+
+.blackbackground{
+	background: url("../img/blackness.png");
+	padding: 0 5px 5px 5px;
+	margin-top: -10px;
+}
+
+
+.subtitlekingdoms{
+	opacity: 1;
+}
+
+.subtitleplanetraid{
+	opacity: 0;
+}
+
+.subtitletreasurecove{
+	opacity: 0;
+}
+
+.rightarrow{
+    background: url("../img/arrow_right.png") no-repeat center;
+    background-size: cover;
+    height: 59px;
+    width: 40px;
+    display: inline-block;
+    position: relative;
+    z-index: 99;
+}
+
+
+
+.leftarrow{
+    background: url("../img/arrow_left.png") no-repeat center;
+    background-size: cover;
+    height: 59px;
+    width: 40px;
+    display: inline-block;
+     position: relative;
+    z-index: 99;
+}
+
+
+
+
+
+
+
+
+/* ----------------- PAGE CONTENT -----------------  */
+
+.mainfeature{
+	width: 100%;
+	background-color: white;
+	margin-right: auto;
+	margin-left: auto;
+	position: relative;
+	z-index: 95;
+}
+
+.maincontent{
+	width: 100%;
+	margin-right: auto;
+	margin-left: auto;
+	position: relative;
+	z-index: 95;
+}
+
+.contentcontainer{
+	max-width: 1895px;
+	min-width: 1140px;
+	margin-left:auto;
+	margin-right: auto;
+	}
+
+.sectioncontaintext{
+	max-width: 1140px;
+	min-width: 1140px;
+	height: 100%;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.sectioncol{
+	width: 50%;
+	height: 100%;
+}
+
+.sectioncol2{
+	width: 25%;
+	height: 100%;
+}
+
+
+
+.centerstuff{
+	margin-right: auto;
+	margin-left: auto;
+}
+
+.section1{
+	width: 100%;
+	background-color: #f2f2f2;
+}
+
+.spacetop{
+	position: absolute;
+	top: 30px;
+}
+
+.marginspacetop{
+	margin-top: 30px;
+}
+
+.spacebottom{
+	position: absolute;
+	bottom: 30px;
+}
+
+.section1stuff{
+	max-width: 1895px;
+	min-width: 1140px;
+	height: 500px;
+	margin-right: auto;
+	margin-left: auto;
+	background-image: url("../img/defaultbackground.png");
+	background-position: center;
+	position: relative;
+}
+
+.section2{
+	width: 100%;
+	background-color: #f2f2f2;
+}
+
+.section2stuff{
+	max-width: 1895px;
+	min-width: 1140px;
+	height: 720px;
+	margin-right: auto;
+	margin-left: auto;
+	overflow: hidden;
+	background-image: url("");
+	background-position: center;
+	position: relative;
+}
+
+.section3{
+	width: 100%;
+	background-color: #FFFFFF;
+}
+
+.section3stuff{
+	max-width: 1895px;
+	min-width: 1140px;
+	margin-right: auto;
+	margin-left: auto;
+	overflow: hidden;
+	background-image: url("");
+	background-position: center;
+	position: relative;
+}
+
+
+
+/* ----------------- NAVIGATION -----------------  */
+
+.navigationlinks{
+	display: inline-block;
+	height: 100%;
+	transition: background-image .3s ease;
+	-moz-transition: background-image .3s ease;
+	-webkit-transition: background-image .3s ease;
+	-o-transition: background-image .3s ease;
+}
+
+
+
+.externallinks{
+	display: inline-block;
+	height: 100%;
+	transition: background-image .3s ease;
+	-moz-transition: background-image .3s ease;
+	-webkit-transition: background-image .3s ease;
+	-o-transition: background-image .3s ease;
+
+}
+
+
+
+
+
+.mainlinks{
+	float: left;
+	height: 100%;
+}
+
+.otherlinks{
+	float: right;
+	height: 100%;
+}
+
+.collapsedlinks{
+	float: right;
+	height: 100%;
+}
+
+
+.topbannerlogo{
+	display: inline-block;
+	margin-right: 60px;
+	background: url("../img/titlelogo.png");
+	width: 276px;
+	height: 120px;
+	float: left;
+	height: 100%;
+}
+
+
+.gameslink2{
+	width: 60px;
+	background: url("../img/navigation/games.png");
+	opacity: 1;
+}
+
+
+
+.gameslink{
+	width: 60px;
+	background: url("../img/navigation/games.png");
+}
+
+.gameslink:hover{
+	background: url("../img/navigation/gameshover.png");
+}
+
+.twitter{
+	width: 50px;
+	height: 120px;
+	background: url("../img/navigation/twitter.png");
+	margin-right: -7px;
+}
+
+.twitter:hover{
+	background: url("../img/navigation/twitterhover.png");
+}
+
+.facebook{
+	width: 50px;
+	height: 120px;
+	background: url("../img/navigation/facebook.png");
+	margin-right: -7px;
+}
+
+.facebook:hover{
+	background: url("../img/navigation/facebookhover.png");
+}
+
+
+
+
+
+
+
+
+
+
+
+
+/* ----------------- CONTAINERS GAME PAGE EFFECT -----------------  */
+
+.container{
+    position:absolute;top:0;left:0;bottom:0;right:0;
+}
+
+ .hoverarea{
+	height: 360px;
+	width: 360px;
+	margin: 0px;
+	display: inline-block;
+	margin-right: 17px;
+}
+
+.hidden{overflow:hidden;}
+
+.visible{overflow:visible;}
+
+.hidden div{
+ 	position:absolute;
+}
+
+.visible div{
+ 	position:absolute;
+}
+
+.darkcover{
+	background: url("../img/Blackness.png");
+	height: 360px;
+	width: 360px;
+	opacity: 1;
+}
+
+.textarea{
+	width: 360px;
+	height: 127px;
+	overflow: hidden;
+	opacity: 0;
+	top: 233px;
+	background-color: white;
+}
+
+.textarea p{
+	position: relative;
+	z-index: 99;
+	}
+
+.textpaddinggamespage{
+	margin-left: 20px;
+	margin-right: 20px;
+	margin-top: 12px;
+	line-height: 1;
+}
+
+.applestorelink{
+	background: url("../img/applestore.png");
+	height: 42px;
+	width: 122px;
+	margin-top: 10px;
+	margin-right: 10px;
+	position: relative;
+	z-index: 99;
+}
+
+
+/* ----------------- BACKGROUND OF TILES -----------------  */
+
+.parent{
+	width: 100%;
+	height: 100%;
+	position:relative;
+	overflow: hidden;
+}
+
+.planetraid{
+	background: url("../games/planetraid/img/square_background.png");
+}
+
+.treasurecove{
+	background: url("../games/treasurecove/img/square_background.png");
+}
+
+.kingdoms{
+	background: url("../games/kingdoms/img/square_background.png");
+}
+
+.parent a{
+	position: absolute;
+    top: 0;
+    left: 0;
+  	width: 100%;
+    height: 100%;
+    text-decoration: none; /* No underlines on the link */
+    z-index: 99; /* Places the link above everything else in the div */
+    background-color: #FFF; /* Fix to make div clickable in IE */
+    opacity: 0; /* Fix to make div clickable in IE */
+    filter: alpha(opacity=1); /* Fix to make div clickable in IE */
+}
+
+
+/* ----------------- LOGOS -----------------  */
+
+.logo{
+    background-size: cover;
+	height: 175px;
+	width: 360px;
+ 	top:50px;
+ 	z-index:98;
+}
+
+.logoplanetraid{
+	background: url("../games/planetraid/img/logo.png") no-repeat center;
+}
+
+.logotreasurecove{
+	background: url("../games/treasurecove/img/logo.png") no-repeat center;
+}
+
+
+.logokingdoms{
+	background: url("../games/kingdoms/img/logo.png") no-repeat center;
+}
+
+
+/* ----------------- POPUP CHARACTERS -----------------  */
+
+.planet_raid_popuppeople{
+	height: 220px;
+	width: 360px;
+	margin-top: -85px
+}
+
+
+.planet_raid_thepeople{
+	background: url("../games/planetraid/img/popup.png");
+	height: 220px;
+	width: 360px;
+	top: 220px;
+ 	z-index:97;
+}
+
+.treasurecove_popuppeople{
+	height: 220px;
+	width: 360px;
+	margin-top: -85px
+}
+
+
+.treasurecove_thepeople{
+	background: url("../games/treasurecove/img/popup.png");
+	height: 220px;
+	width: 360px;
+	top: 220px;
+ 	z-index:97;
+}
+
+.kingdoms_popuppeople{
+	height: 220px;
+	width: 360px;
+	margin-top: -85px
+}
+
+
+.kingdoms_thepeople{
+	background: url("../games/kingdoms/img/popup.png");
+	height: 220px;
+	width: 360px;
+	top: 220px;
+ 	z-index:97;
+}
+
+
+/* ----------------- ANIMATION -----------------  */
+
+.hoverarea:hover .parent{
+	overflow: visible;
+}
+
+
+.hoverarea:hover .planet_raid_thepeople {
+	top: 0px;
+}
+
+.hoverarea:hover .treasurecove_thepeople {
+	top: 0px;
+}
+
+
+.hoverarea:hover .kingdoms_thepeople {
+	top: 0px;
+}
+
+.hoverarea:hover .textarea{
+	opacity: 1;
+}
+
+
+.hoverarea:hover .darkcover{
+	opacity: 0;
+}
+
+
+
+
+
+
+
+/* ----------------- FOOTER -----------------  */
+
+.footerbox{
+	width: 100%;
+	padding-top: 30px;
+	padding-bottom: 30px;
+}
+
+
+
+
+.footertextcontainer{
+	max-width: 1140px;
+	min-width: 1140px;
+	margin-left: auto;
+	margin-right: auto;
+
+}
+
+.footercolumn{
+	width: 20%;
+	float: left;
+	text-align: left;
+}
+
+.footertitle{
+	font-weight: 300;
+	letter-spacing:1px;
+	font-size: 14px;
+}
+
+
+
+
+/* ----------------- BREAKPOINTS -----------------  */
+
+
+
+
+
+/* BREAKS */
+
+@media screen and (max-width: 1200px) {
+
+.topbannerlogo{
+	margin-left:20px;
+}
+
+
+.sectioncontaintext{
+	margin-left:20px;
+					}
+}
+
+
+
+/* NAVIGATION AND SUBTITLE */
+
+@media screen and (max-width: 1200px) {
+
+
+.footertextcontainer{/*NOT SUPPOSED TO BE HERE */
+	padding-left: 20px;
+	padding-right: 20px;
+}
+
+.subtitlekeepedge{
+	margin-left: 20px;
+	margin-right: 20px;
+}
+
+}
+
+
+
+/* ----------------- NEWSLETTER SIGNUP FORM -----------------  */
+#mc_embed_signup #subscribe-label {
+    color: white;
+}
+
+#mc_embed_signup #mce-EMAIL {
+    margin: 5px 0 5px 0;
+	-webkit-border-top-left-radius:4px;
+	-moz-border-radius-topleft:4px;
+	border-top-left-radius:4px;
+	-webkit-border-top-right-radius:4px;
+	-moz-border-radius-topright:4px;
+	border-top-right-radius:4px;
+	-webkit-border-bottom-right-radius:4px;
+	-moz-border-radius-bottomright:4px;
+	border-bottom-right-radius:4px;
+	-webkit-border-bottom-left-radius:4px;
+	-moz-border-radius-bottomleft:4px;
+	border-bottom-left-radius:4px;
+    border: none;
+}
+
+#mc_embed_signup .button-subscribe {
+	/*background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #fe1a00), color-stop(1, #ce0100) );
+	background:-moz-linear-gradient( center top, #fe1a00 5%, #ce0100 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#fe1a00', endColorstr='#ce0100');*/
+	background-color:#ffffff;
+	-webkit-border-top-left-radius:8px;
+	-moz-border-radius-topleft:8px;
+	border-top-left-radius:8px;
+	-webkit-border-top-right-radius:8px;
+	-moz-border-radius-topright:8px;
+	border-top-right-radius:8px;
+	-webkit-border-bottom-right-radius:8px;
+	-moz-border-radius-bottomright:8px;
+	border-bottom-right-radius:8px;
+	-webkit-border-bottom-left-radius:8px;
+	-moz-border-radius-bottomleft:8px;
+	border-bottom-left-radius:8px;
+	text-indent:0;
+	border: none;
+	display:inline-block;
+	color:#e44524;
+	font-family:Arial;
+	font-size:15px;
+	font-weight:bold;
+	font-style:normal;
+	height:21px;
+	width:98;
+	text-decoration:none;
+	text-align:center;
+}
+
+/* subscription submission button */
+#mc_embed_signup .button-subscribe:active {
+	position:relative;
+	top:1px;
+}
+
+/* the div that replaces the original form
+    after it's been submitted */
+#subscription-confirmation {
+    color: white;
+}
+
+/*
+    For styling the placeholder text that pre-populates
+    the email field
+    */
+::-webkit-input-placeholder {
+    color: #ffd4d4;
+}
+:-moz-placeholder { /* Mozilla Firefox 4 to 18 */
+    color: #ffd4d4;
+}
+::-moz-placeholder { /* Mozilla Firefox 19+ */
+    color: #ffd4d4;
+}
+:-ms-input-placeholder { /* Internet Explorer 10+ */
+    color: #ffd4d4;
+}
+
+
+
+
+

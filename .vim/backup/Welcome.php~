@@ -1,0 +1,27 @@
+<?php defined('SYSPATH') or die('No direct script access.');
+
+class Controller_Welcome extends Controller_Base {
+
+    /*
+    */
+    public function action_index()
+    {
+        //HTTP::redirect(Path::new_site());
+
+        View::set_global('title', "YMC GAMES");
+
+        $games = ORM::factory('Game')->find_all();
+
+        // removing feature:
+        //$featured_game = Model_Game::find_by_slug($this->settings->get('featured_game'));
+
+        $content = View::factory('index')
+                    ->set('featured_game', $featured_game)
+                    ->set('games', $games);
+
+        $response = View::factory('layout/default')->set('content', $content);
+        $this->response->body($response);
+
+    }
+
+} // End Welcome

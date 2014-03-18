@@ -1,0 +1,182 @@
+var APPLICATION_NAME = 'YA Reporter'
+
+// For NodeFly monitoring
+require('strong-agent').profile(
+    'fa2394b0fe56d17756b2c38a237cf7c9',
+    APPLICATION_NAME
+);
+// For NodeTime monitoring
+//require('nodetime').profile({
+//    accountKey: 'e3934a80a4c0974a28cf2c3d8d30c1d9a41a413e',
+//    appName: APPLICATION_NAME
+//});
+
+// for long stack trace
+require('longjohn');
+
+var logger = require('./lib/logger');
+
+var express = require('express');
+var app = express();
+
+var path = require('path');
+var fs = require('fs');
+
+var YmcaLogger = require('../tools/logging/ymca-logger');
+var ymcaLogger = new YmcaLogger(['ReporterServer']);
+
+var file_based_config_path = path.join(path.join(__dirname, '..'), 'set_as_production.txt')
+var file_based_env_config = fs.existsSync(file_based_config_path) ? 'production' : 'development';
+
+process.env.NODE_ENV = process.env.NODE_ENV || file_based_env_config || 'development';
+var port = process.env.PORT || 2000;
+
+app.configure(function () {
+    app.use(express.bodyParser());
+    app.use(express.methodOverride());
+
+    app.use(express.static(path.join(__dirname, "public")));
+//    app.use(express.static(__dirname+'/public'));
+    app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
+
+    // fixed order to enable the session
+    app.use(express.cookieParser());
+    app.use(express.session({secret:'ymca report'}));
+
+    if (process.env.NODE_ENV !== 'production') {
+        app.use(express.logger('dev'));
+    }
+
+    app.set('views', path.join(__dirname ,'views'));
+    app.engine('.html',require('ejs').__express);
+    app.set('view engine', 'html');
+
+    app.use(app.router);
+
+});
+
+
+
+var port = process.env.PORT || 2000;
+app.listen(port, function() {
+
+    logger.info(
+        '***********************************************************************\n' +
+        'YMCA Report Server started...\n' +
+        'Environment: ' + process.env.NODE_ENV + "\n" +
+        'Listening on port ' + port.toString() + "\n" +
+        '***********************************************************************'
+        );
+
+});
+
+// Crash report
+process.on('uncaughtException', function(err) {
+    // handle the error safely
+    ymcaLogger.error({
+        message: 'uncaught exception',
+        error: err
+    });
+});
+
+// Avoids DEPTH_ZERO_SELF_SIGNED_CERT error for self-signed certs
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+
+
+// ==================================== R O U T E S ========================================
+
+var auth = require('./auth');
+var sign = require('./controllers/sign');
+var revenue = require('./controllers/revenue');
+var arpu = require('./controllers/arpu');
+var firstLaunches = require('./controllers/first_launches');
+var userStart = require('./controllers/user_start');
+var userRegister = require('./controllers/user_register');
+
+var activeUser = require('./controllers/active_user');
+var allBuyer = require('./controllers/buyer_all');
+var newBuyer = require('./controllers/buyer_sort');
+var retention = require('./controllers/retention');
+var retention2 = require('./controllers/retention_install_start');
+
+
+var sdk_debug = require('./controllers/sdk_debug');
+var session = require('./controllers/session');
+var crash = require('./controllers/crash');
+
+
+var user = require('./aggregator/mrUsers');
+var timeUser = require('./aggregator/mrTimeUser');
+
+
+var apiVersion = '/api/1.0';
+app.get('/iframer',function(req,res){
+//    ymcaLogger.log(req.query);
+    var token=req.query.token;
+    var gid=req.query.gid;
+    var did=req.query.did;
+    var uid=req.query.uid;
+    var is_admin=req.query.is_admin;
+    if (token&&gid&&did&&uid) {
+        ymcaLogger.log({
+            action: 'get iframer',
+            did: did,
+            gid: gid,
+            uid: uid,
+            is_admin: is_admin
+        });
+        res.render('index',{
+//        token:'90180340e733599bcf7acd58ee1eb58bf6ab9b4faf78735ad9711c0288095ca369027cd2a6370e97ab2a1ae3d24c62c1430613d272c8f0941d63fdf9321e1814',
+//        gid:'2a3a10f13deefdd13568639068f00d46',
+//        did:'2',
+//        uid:'88'
+            via_iframe:true,
+            token:token,
+            gid:gid,
+            did:did,
+            uid:uid,
+            is_admin:is_admin
+        });
+    } else {
+        res.send('wrong call missing token or gid or did or uid');
+    }
+
+});
+
+app.post(apiVersion+'/signin',sign.login);
+app.post(apiVersion+'/verify',sign.verifyUser);
+
+app.get(apiVersion+'/revenue', auth.userRequired,revenue.api);
+app.get(apiVersion+'/arpu', auth.userRequired,arpu.api);
+
+app.get(apiVersion+'/first_launches', auth.userRequired, firstLaunches.api);
+app.get(apiVersion+'/user_start', auth.userRequired, userStart.api);
+app.get(apiVersion+'/user_register', auth.userRequired, userRegister.api);
+app.get(apiVersion+'/user_active', auth.userRequired, activeUser.api);
+app.get(apiVersion+'/session', auth.userRequired, session.api);
+
+app.get(apiVersion+'/user_buyer_all', auth.userRequired, allBuyer.api);
+app.get(apiVersion+'/user_buyer_sort', auth.userRequired, newBuyer.api);
+app.get(apiVersion+'/retention', auth.userRequired, retention.api);
+app.get(apiVersion+'/retention2', auth.userRequired, retention2.api);
+
+app.get(apiVersion+'/sdk_debug', auth.userRequired, sdk_debug.api);
+app.get(apiVersion+'/crash', auth.userRequired, crash.api);
+
+
+app.get('/agg_reg',function(req,res){
+    res.send('Do agg_reg...');
+    user.register();
+});
+
+app.get('/agg_login',function(req,res){
+    res.send('Do agg_login...');
+    user.login();
+});
+
+app.get('/agg_user',function(req,res){
+    res.send('Do agg user...');
+    timeUser.basicJob();
+});
+

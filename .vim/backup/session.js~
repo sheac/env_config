@@ -1,0 +1,74 @@
+/**
+ * Created by William Guan on 2013-11-26.
+ */
+
+
+var database = require('../database');
+var utime = require('../lib/utime').getTimePoint
+var fillGap = require('../lib/utime').fillGap
+
+var YmcaLogger = require('../../tools/logging/ymca-logger'),
+    ymcaLogger = new YmcaLogger(['AggregationController-Revenue']);
+
+exports.api = function(req,res){
+
+    var type = req.query.type;
+    var ymc_id = req.query.token;
+    var timezone = req.query.timezone;
+    var collection = database.collectionFromName(req.query.collection_name);
+
+    var startTime,endTime,
+        group={};
+
+    var result = utime[type](null, null, timezone)
+    ymcaLogger.log({result:result})
+
+    startTime = result.from_time
+    endTime = result.to_time
+    group = result.group;
+
+    delete group.userid;
+
+    var matchQuery = {
+                "properties.YA0token":ymc_id,
+                event: 'YA0session',
+            };
+    switch(timezone) {
+        case "GMT":
+            matchQuery['properties.time'] = {"$gte": startTime, "$lt": endTime}
+            break;
+        case "pacific":
+            matchQuery['properties.time_pacific'] = {"$gte": startTime, "$lt": endTime}
+            break;
+    }
+
+    if (result.error){
+        res.send({error:result.error})
+    } else {
+
+        collection.aggregate(
+            [{
+                $match: matchQuery
+            },{
+                $group:{
+                    _id:group,
+                    sessions:{$sum:1},
+                    sess_len:{$avg:"$properties.length"}
+                }
+            },{
+                $project:{
+                    _id:{y:"$_id.year",t:"$_id.indexOfTime"},
+                    sessions:"$sessions",
+                    sess_len:"$sess_len"
+                }
+            },{
+                $sort:{_id:1}
+            }],
+            function(err,result){
+                ymcaLogger.log({result:result});
+                var result2 = fillGap(startTime,endTime,type,result)
+                res.send(result2);
+            });
+    }
+};
+

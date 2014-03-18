@@ -1,0 +1,103 @@
+var database = require('../database');
+var utime = require('../lib/utime').getTimePoint
+var fillGap = require('../lib/utime').fillGap
+
+var YmcaLogger = require('../../tools/logging/ymca-logger'),
+    ymcaLogger = new YmcaLogger(['AggregationController-Revenue']);
+
+// API:  /revenue/:type
+exports.api = function(req,res){
+
+    var type = req.query.type;
+    var ymc_id = req.query.token;
+    var timezone = req.query.timezone;
+    var collection = database.collectionFromName(req.query.collection_name);
+//    var type = req.params.type;
+
+    ymcaLogger.log('\n/revenue/   %s   %s\n',type,ymc_id);
+
+//    var startTime,endTime,
+//        group={};
+//    endTime = new Date();
+//
+//    if (type == 'debug') {
+//        eventCollection.aggregate(
+//            [{
+//                $match: {
+//                    event: 'YA0charge',
+//                    "properties.time": {"$gte": new Date("5 1 2013"), "$lt":endTime}
+//                }
+//            }],function(err,result){
+//                ymcaLogger.log(result);
+//                res.send(result);
+//            });
+//
+//    } else if (type == 'day') {
+////        firstDay = new Date((lastDay.getMonth())+" "+(lastDay.getDate()+0)+" "+lastDay.getFullYear());
+//        startTime = new Date(endTime - 30 *24*60*60*1000);
+//        timeGroup = {indexOfTime:{$dayOfYear : "$properties.time"}};
+//
+//
+//    } else if (type == 'week') {
+//        var period = 7 * 24;    // 24 weeks
+//        startTime  = new Date(endTime - period *24*60*60*1000);
+//        timeGroup = {indexOfTime:{$week : "$properties.time"}};
+//    } else if (type == 'month') {
+//        startTime  = new Date(endTime - 365 *24*60*60*1000);
+//        timeGroup = {indexOfTime:{$month : "$properties.time"}};
+//    }
+
+    var result = utime[type](null,null,timezone)
+
+    var startTime = result.from_time
+    var endTime = result.to_time
+    var group = result.group
+
+    if (result.error){
+        res.send({error:result.error})
+    } else {
+        ymcaLogger.log('lastDay:',endTime);
+        ymcaLogger.log('firstDay:',startTime);
+        ymcaLogger.log('group:',group)
+
+        var matchQuery = {
+                    "properties.YA0token":ymc_id,
+                    event: 'YA0charge',
+                };
+        switch(timezone) {
+            case "GMT":
+                matchQuery['properties.time'] = {"$gte": startTime, "$lt": endTime}
+                break;
+            case "pacific":
+                matchQuery['properties.time_pacific'] = {"$gte": startTime, "$lt": endTime}
+                break;
+        }
+
+
+
+        collection.aggregate(
+            [{
+                $match: matchQuery
+            },
+            {
+                $group:{
+                    _id:group,
+                    revenue:{$sum:"$properties.YA0USD"}
+                }
+            },
+            {
+                $group:{
+//                    _id:"$_id.indexOfTime",
+                    _id:{y:"$_id.year",t:"$_id.indexOfTime"},
+                    revenue:{$sum:"$revenue"}
+                }
+            },
+            {
+                $sort:{_id:1}
+            }],function(err,result){
+                ymcaLogger.log(result);
+                var result2 = fillGap(startTime,endTime,type,result)
+                res.send(result2);
+            });
+    }
+};

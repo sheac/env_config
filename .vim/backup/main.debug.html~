@@ -1,0 +1,16 @@
+<div ng-controller='debugController'>
+    <div id="console">
+        <table class="debug-table">
+            <tr class="table-header-row">
+                <td class="type-col">Type</td>
+                <td class="time-col">Time</td>
+                <td class="ip-col">IP Address</td>
+            </tr>
+            <tr class="table-data-row" ng-repeat="event in events">
+                <td class="type-col">{{event.type}}</td>
+                <td class="time-col">{{event.time}}</td>
+                <td class="ip-col">{{event.ip_address}}</td>
+            </tr>
+        </table>
+    </div>
+</div>

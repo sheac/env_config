@@ -1,0 +1,78 @@
+from django import forms
+from django.forms import ModelForm, CharField, DateTimeField, ModelChoiceField
+from django.db import models
+
+from ymc.model.developers import Developer
+from ymc.model.publishers import Publisher
+
+# TODO find some way to coerce Django into supporting inheritance in
+# this critical aspect of the application -- probably by way of some
+# hyper-obscure __future__ Python functionality that involves overriding
+# time itself
+
+
+"""
+# DEVELOPER
+"""
+class DeveloperChoiceField(ModelChoiceField):
+   def label_from_instance(self, obj):
+        # return your own label here...
+        return obj.name
+
+class AdminNewDeveloperForm(ModelForm):
+    name = CharField(label='Developer Name', required=True, help_text='Name of Developer')
+    created_at = DateTimeField(label='Created At', required=True, help_text='Date and Time Developer Joined YMC')
+
+    class Meta:
+        model = Developer
+        widgets = {
+        }
+
+    def clean(self):
+        return self.cleaned_data
+
+
+
+class AdminEditDeveloperForm(ModelForm):
+    name = CharField(label='Developer Name', required=False, help_text='Name of Developer')
+    created_at = DateTimeField(label='Created At', required=True, help_text='Date and Time Developer Joined YMC')
+    class Meta:
+        model = Developer
+        widgets = {
+        }
+
+    def clean(self):
+        return self.cleaned_data
+
+
+"""
+# PUBLISHER
+"""
+class PublisherChoiceField(ModelChoiceField):
+   def label_from_instance(self, obj):
+        # return your own label here...
+        return obj.name
+
+class AdminNewPublisherForm(ModelForm):
+    name = CharField(label='Publisher Name', required=True, help_text='Name of Publisher')
+    created_at = DateTimeField(label='Created At', required=True, help_text='Date and Time Publisher Joined YMC')
+
+    class Meta:
+        model = Publisher
+        widgets = {
+        }
+
+    def clean(self):
+        return self.cleaned_data
+
+
+class AdminEditPublisherForm(ModelForm):
+    name = CharField(label='Publisher Name', required=False, help_text='Name of Publisher')
+    created_at = DateTimeField(label='Created At', required=True, help_text='Date and Time Publisher Joined YMC')
+    class Meta:
+        model = Publisher
+        widgets = {
+        }
+
+    def clean(self):
+        return self.cleaned_data

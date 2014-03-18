@@ -1,0 +1,129 @@
+from django import forms
+from django.forms import ModelForm, CharField, PasswordInput
+from django.db import models
+from django.db.models import Q
+
+from ymc.model.users import User
+from ymc.model.developers import Developer
+from ymc.model.publishers import Publisher
+from app.views.admin.permissionsgroupforms import DeveloperChoiceField, PublisherChoiceField
+
+from ymc.lib import helpers
+
+"""
+# Model New User Form
+"""
+class AdminNewUserForm(ModelForm):
+
+    password2 = CharField(label='Verify Password', widget=forms.PasswordInput)
+    gender = forms.ChoiceField(choices=User._gender_options)
+    developer = DeveloperChoiceField(queryset = Developer.objects.filter(), required = False)
+    publisher = PublisherChoiceField(queryset = Publisher.objects.filter(), required = False)
+
+    class Meta:
+        model = User
+        widgets = {
+            'password': PasswordInput(),
+        }
+        exclude = ['games', 'ip_address']
+
+
+    def clean(self):
+        password = self.cleaned_data.get('password')
+        password2 = self.cleaned_data.get('password2')
+        if( password2 ):
+            del self.cleaned_data['password2']
+
+        if (password and password2 and (password != password2)):
+            raise forms.ValidationError("Passwords don't match")
+
+        email = helpers.strtolower(self.cleaned_data.get('email'))
+        if(User.objects.filter(email=email).count() > 0):
+            raise forms.ValidationError("This email address is already registered.")
+
+        username = helpers.strtolower(self.cleaned_data.get('username'))
+        if(User.objects.filter(username=username).count() > 0):
+            raise forms.ValidationError("This username is already registered.")
+
+
+        return self.cleaned_data
+
+
+"""
+# Model Edit User Form
+"""
+class AdminEditUserForm(ModelForm):
+    gender = forms.ChoiceField(choices=User._gender_options)
+    developer = DeveloperChoiceField(queryset = Developer.objects.filter(), required = False)
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'username', 'email', 'last_login', 'joined_at', 'gender', 'is_admin', 'ip_address', 'facebook_id', 'developer', 'publisher']
+        widgets = {}
+
+    def clean(self):
+        #print("CLEANING USER...")
+        #print(self.cleaned_data);
+        ip_address = self.cleaned_data.get('ip_address')
+        if( not ip_address):
+            self.cleaned_data['ip_address'] = None
+
+
+        user = super(AdminEditUserForm, self).save(commit = False)
+
+        email = helpers.strtolower(self.cleaned_data.get('email'))
+        if(User.objects.filter(Q(email=email), ~Q(id=user.id)).count() > 0):
+            raise forms.ValidationError("This email address is already registered.")
+
+        username = helpers.strtolower(self.cleaned_data.get('username'))
+        if(User.objects.filter(Q(username=username), ~Q(id=user.id)).count() > 0):
+            raise forms.ValidationError("This username is already registered.")
+
+        return self.cleaned_data
+
+
+
+"""
+# Model Edit User Form
+"""
+class AdminPasswordUserForm(ModelForm):
+    password = CharField(label='Current Password', widget=forms.PasswordInput)
+    password_new = CharField(label='New Password', widget=forms.PasswordInput)
+    password_new2 = CharField(label='Verify New Password', widget=forms.PasswordInput)
+    class Meta:
+        model = User
+        fields = ['password']
+
+    def clean(self):
+        password_new = self.cleaned_data.get('password_new')
+        password_new2 = self.cleaned_data.get('password_new2')
+
+        if( password_new2 ):
+            del self.cleaned_data['password_new2']
+            del self.cleaned_data['password_new']
+
+        if (password_new and password_new2 and (password_new != password_new2)):
+            raise forms.ValidationError("Passwords don't match")
+
+        return self.cleaned_data
+
+
+"""
+"""
+class AssociateGamesForm(forms.Form):
+    games = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple)
+
+
+"""
+"""
+class AdminFilterUserForm(forms.Form):
+    registered_at_from = forms.DateField(initial=None, label='Registered From', help_text="Leave blank for ANY")
+    registered_at_to = forms.DateField(initial=None, label='Registered To', help_text="Leave blank for ANY")
+
+    last_login_from = forms.DateField(initial=None, label='Last Logged In From', help_text="Leave blank for ANY")
+    last_login_to = forms.DateField(initial=None, label='Last Logged In To', help_text="Leave blank for ANY")
+
+    email = forms.CharField(label="Email", help_text="Enter a email address (or partial) to search for.", max_length=255)
+
+
+    results_per_page = forms.ChoiceField(initial=100, label='Results Per Page', choices=[(10,"10"),(25,"25"), (50,"50"),(100, "100")])
+

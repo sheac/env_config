@@ -1,0 +1,396 @@
+<?php defined('SYSPATH') or die('No direct script access.');
+
+class Controller_Users extends Controller_Base {
+
+    public function before(){
+        parent::before();
+        if($this->user->get_associate_database_record()->restrict_access && $this->user->is_logged_in()){
+            if($this->request->action()!='login'&&$this->request->action()!='signup'&&$this->request->action()!='ajaxlogout'&&$this->request->action()!='verify'){
+                HTTP::redirect(Path::restrict_access());
+            }
+        }
+
+    }
+    /*
+    */
+    public function action_index()
+    {
+        $adminPriv = false;
+        View::set_global('settings', Kohana::$config->load('settings'));
+
+
+        $user = new Model_User();
+        View::set_global('user', $user);
+
+        if( ! $user->is_logged_in()) {
+             HTTP::redirect(Path::root());
+        }
+
+        View::set_global('title', "YMC DEVELOPER - {$user->developer_name}");
+
+        $games = $user->developer_games();
+
+        $response = Arr::get($games, 'response');
+
+        $developer =  Arr::get($response, 'developer');
+        $games = Arr::get($response, 'games');
+
+        $user->developer_name = $developer['name'];
+
+        if( ! $user->is_developer_updated()) {
+            Model_Developer::update_developer($developer, $games);
+            $user->set_developer_updated();
+            $user->save();
+        }
+
+        /*$games = ORM::factory('Game')
+                    ->where('developer_id', '=', $user->did)
+                    ->order_by('title', 'asc')
+                    ->find_all();
+        */
+        $games = ORM::factory('Game')
+                    ->where('developer_id', '=', $user->did)
+                    ->and_where('status','NOT IN',array(Model_Game::GAME_STATUS_ARCHIVE))
+                    ->join('contacts','LEFT')
+                    ->on('game.primary_contact_id','=','contacts.id')
+                    ->on('game.secondary_contact_id','=','contacts.id')
+                    ->order_by('game.title','asc')
+                    ->find_all();
+
+
+
+
+        $sdk_ios = ORM::factory('SDK')
+                    ->where('platform', '=', Model_SDK::PLATFORM_IOS)
+                    ->order_by('major', 'desc')
+                    ->order_by('minor', 'desc')
+                    ->order_by('patch', 'desc')
+                    ->find();
+
+        $sdk_android = ORM::factory('SDK')
+                    ->where('platform', '=', Model_SDK::PLATFORM_ANDROID)
+                    ->order_by('major', 'desc')
+                    ->order_by('minor', 'desc')
+                    ->order_by('patch', 'desc')
+                    ->find();
+
+        $sdk_unity = ORM::factory('SDK')
+            ->where('platform', '=', Model_SDK::PLATFORM_UNITY)
+            ->order_by('major', 'desc')
+            ->order_by('minor', 'desc')
+            ->order_by('patch', 'desc')
+            ->find();
+
+        $content = View::factory('users/index')
+                        ->set('sdk_ios', $sdk_ios)
+                        ->set('sdk_android', $sdk_android)
+                        ->set('sdk_unity',$sdk_unity)
+                        ->set('games', $games)
+                        ->set('developer', $developer);
+
+        $response = View::factory('layout/visitor')
+                        ->set('content', $content);
+
+        $this->response->body($response);
+    }
+
+    /*
+    */
+    public function action_ajaxlogin()
+    {
+
+        $errors = 0;
+        $json_response = array(
+            'errors' => $errors,
+        );
+
+        $ymc_user = new Model_User();
+        if ($this->request->method() == 'POST') {
+
+            $username_email = Arr::get($_POST, 'username_email');
+            $password = Arr::get($_POST, 'password');
+
+            $YMC_api_response = $ymc_user->developer_login(
+                $username_email,
+                $username_email,
+                $password,
+                $this->settings['ymc_developer_app_id']
+            );
+
+            $status = Arr::get($YMC_api_response, 'status');
+
+            if($status == 1) {
+                $ymc_user->get_info();
+
+                $ymc_user->log_developer();
+
+                $this->response->body(json_encode($json_response));
+                return;
+            }
+
+            $errors = 1;
+
+            $json_response['errors'] = $errors;
+            $json_response['message'] = Arr::get($YMC_api_response, 'message');
+        }
+
+        $json_response['html'] = View::factory('users/login')->set('user', $ymc_user)->set('errors', $errors)->render();
+        $this->response->body(json_encode($json_response));
+    }
+
+    /*
+    */
+    public function action_ajaxlogout()
+    {
+        $json_response = array(
+            'errors' => 0,
+        );
+
+        $ymc_user = new Model_User();
+        if ($this->request->method() == 'POST') {
+
+            $ymc_user->logout();
+
+            $this->response->body(json_encode($json_response));
+            return;
+        }
+
+        $json_response['html'] = View::factory('users/logout')->set('user', $ymc_user)->render();
+        $this->response->body(json_encode($json_response));
+    }
+
+    /*
+    */
+    public function action_signup()
+    {
+        $signup_data = array(
+            'email' => null,
+            'username' => null,
+            'password' => null,
+            'verify_password' => null,
+            'developer_name' => null,
+        );
+
+        $errors = array();
+
+        if($this->request->method() == 'POST') {
+
+            $signup_data = $_POST;
+
+            $email = Arr::get($signup_data, 'email');
+            $username = Arr::get($signup_data, 'username');
+            $developer_id = Arr::get($signup_data, 'developer_id');
+            if($developer_id!=Model_Developer::NEW_DEVELOPER_INDEX)
+                {
+                    $developer_name = ORM::factory('Developer')->where('id','=',$developer_id)->find()
+                                                    ->name;
+                }
+            else{
+                $developer_name = Arr::get($signup_data,'developer_name_new');
+            }
+
+
+
+            if(Model_User::already_exists($email)) {
+                $this->user->add_error( __("User with that email already exists"));
+            }
+
+
+            $values = array(
+                'username' => $username,
+                'email' => $email,
+                'developer_name' => $developer_name,
+                'restrict_access' => $developer_id==Model_Developer::NEW_DEVELOPER_INDEX ? Model_UserDeveloper::OPEN_ACCESS : Model_UserDeveloper::DENY_ACCESS
+            );
+
+            $this->user->values($values);
+
+            $errors = array_merge($errors, $this->user->validate_signup($values, true));
+
+            if( count($errors) <= 0) {
+
+                $user_developer = Model_UserDeveloper::build($values);
+                $user_developer->create_verify_token();
+                $user_developer->save();
+
+                Notification::send_verify_register($user_developer, $developer_name);
+                header("refresh:5;url=".Path::users_login());
+                $content = View::factory('users/signup_success')
+                                ->set('email',$email)
+                                ->set('username',$username);
+                $response = View::factory('layout/visitor')
+                                ->set('content',$content);
+                $this->response->body($response);
+                return;
+
+
+            }
+
+        }
+
+        $content = View::factory('users/signup')
+                        ->set('errors', $errors)
+                        ->set('signup_data' , $signup_data);
+
+
+        $response = View::factory('layout/visitor')
+                        ->set('content', $content);
+
+        $this->response->body($response);
+    }
+
+    /*
+    */
+    public function action_login()
+    {
+        $login_data = array(
+            'username_email' => null,
+            'password' => null,
+        );
+        $errors = 0;
+
+        $ymc_user = new Model_User();
+        if($this->request->method() == 'POST') {
+
+            $username_email = Arr::get($_POST, 'username_email');
+            $password = Arr::get($_POST, 'password');
+
+            $YMC_api_response = $ymc_user->developer_login(
+                $username_email,
+                $username_email,
+                $password,
+                $this->settings['ymc_developer_app_id']
+            );
+
+            $status = Arr::get($YMC_api_response, 'status');
+
+            if($status == 1) {
+                $ymc_user->get_info();
+
+                $ymc_user->log_developer();
+                var_dump($YMC_api_response);
+                exit();
+                $this->mobile? HTTP::redirect(Path::build_index()) : HTTP::redirect(Path::users()) ;
+                return;
+            }
+
+            $errors = 1;
+
+        }
+
+        $content = View::factory('users/login')
+                        ->set('errors', $errors)
+                        ->set('user' , $ymc_user);
+
+
+        $response = View::factory('layout/visitor')
+                        ->set('content', $content);
+
+        $this->response->body($response);
+    }
+
+    /*
+    */
+    public function action_verify()
+    {
+        $token = Arr::get($_GET, 't');
+        $developer_name  = Arr::get($_GET, 'd');
+
+        $user_developer = Model_UserDeveloper::find_by_verify_token($token);
+        if( ! $user_developer->loaded()) {
+            throw HTTP_Exception::factory(404, 'File not found!');
+        }
+
+        $dev_values = array(
+            'name' => $developer_name,
+        );
+
+        $developer = ORM::factory('Developer')->where('name','=',$developer_name)->find();
+        if(!$developer->loaded())
+            $developer = Model_Developer::build($dev_values);
+
+        $game = new Model_Game();
+
+        $password =  Arr::get($_POST, 'password');
+        $verify_password =  Arr::get($_POST, 'verify_password');
+
+        if($this->request->method() == 'POST') {
+
+            $signup_values = array(
+                'first_name' => Arr::get($_POST, 'first_name'),
+                'last_name' => Arr::get($_POST, 'last_name'),
+
+                'email' => $user_developer->email,
+                'username' => $user_developer->username,
+                'password' => $password,
+                'verify_password' => $verify_password,
+                'developer_name' => $developer->name,
+            );
+
+            $this->user->values($signup_values);
+            $this->user->validate_signup($signup_values);
+
+            if($this->user->check() && $developer->check() && $user_developer->check()) {
+
+                $YMC_api_response = $this->user->developer_register(
+                    $this->user->email,
+                    $this->user->username,
+                    $password,
+                    $this->settings['ymc_developer_app_id'],
+                    $developer->name
+                );
+
+                $status = Arr::get($YMC_api_response, 'status');
+
+                if($status == 1) {
+                    $this->user->get_info();
+
+                    $this->user->log_developer(true);
+                    $user_developer->reload();
+                    if($user_developer->restrict_access)
+                        Notification::send_new_user($user_developer);
+
+
+
+
+
+                    HTTP::redirect(Path::users());
+                    return;
+                }
+
+
+                $this->user->add_error(Arr::get($YMC_api_response, 'message'));
+            }
+
+        }
+
+
+        $content = View::factory('users/verify')
+                        ->set('password', $password)
+                        ->set('verify_password', $verify_password)
+                        ->set('game', $game)
+                        ->set('user_developer', $user_developer)
+                        ->set('developer' , $developer);
+
+
+        $response = View::factory('layout/visitor')
+                        ->set('content', $content);
+
+        $this->response->body($response);
+
+
+    }
+
+
+    /*
+    */
+    public function action_change_language(){
+        $requestedLang = $this->request->param('id');
+        $lang = array_search($requestedLang, Model_User::getLanguages())? $requestedLang : 'en-us';
+        Cookie::set('lang',$lang);
+        HTTP::redirect($_SERVER['HTTP_REFERER']);
+    }
+
+
+
+}

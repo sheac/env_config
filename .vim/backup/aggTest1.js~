@@ -1,0 +1,96 @@
+/**
+ * Created by william on 2013-09-27.
+ */
+
+var async = require('async');
+
+var config = {
+//    database:'54.227.251.195/ymca',
+    //database:'mongodb0.ymcnetwork.com:27017,mongodb1.ymcnetwork.com:27017,mongodb2.ymcnetwork.com:27017/ymca?slaveOk=true',
+    database: '54.237.36.29:27017,54.221.7.28:27017,54.227.222.34:27017/ymca?slaveOk=true',
+    collectionEvent:'events'
+};
+
+var mongojs = require('mongojs');
+
+var db = mongojs.connect(config.database, [config.collectionEvent]);
+var collectionEvent =  db.collection(config.collectionEvent);
+
+console.log("connected to db:", config.database);
+
+var numTimes = 2;
+console.log("doing", numTimes, "aggregations");
+
+var ymc_id = 'fcffdba6be8d11e2b50b080027dde1ce';
+var startTime = new Date("9 25 2013");
+var endTime = new Date();
+
+var rounds = [
+    {
+        events: ['Gold'],
+        group:
+            {
+                year:{$year:"$properties.time"},
+                indexOfTime:{$dayOfYear:"$properties.time"},
+                userid: "$properties.distinct_id"
+            },
+    },
+    {
+        events: ['Decompose'],
+        group:
+            {
+                year:{$year:"$properties.time"},
+                indexOfTime:{$week:"$properties.time"},
+                userid: "$properties.distinct_id"
+            },
+    },
+    {
+        events: ['Enhance'],
+        group:
+            {
+                year:{$year:"$properties.time"},
+                indexOfTime:{$month:"$properties.time"},
+                userid: "$properties.distinct_id"
+            },
+    },
+]
+
+var startTS = new Date().getTime(),
+    endTS;
+console.log("started at:", startTS);
+async.timesSeries(rounds.length, function(round_i, callback) {
+
+    collectionEvent.aggregate(
+        [{
+            $match: {
+                "properties.YA0token":ymc_id,
+                event: {$in:rounds[round_i].events},
+                "properties.time": {"$gte": startTime, "$lt": endTime}
+            }
+        },{
+            $group:{
+                _id:rounds[round_i].group
+            }
+        },{
+            $group:{
+    //                    _id:"$_id.indexOfTime",
+                _id:{y:"$_id.year",t:"$_id.indexOfTime"},
+                users: {$sum: 1 }
+            }
+        },{
+            $sort:{_id:1}
+        }],
+        function(err, result) {
+            endTS = new Date().getTime();
+            console.log("Finished a round of aggregations. Elapsed time:", (endTS - startTS));
+            callback();
+        });
+
+}, function(err,result){
+    endTS = new Date().getTime();
+    console.log("ended at:", endTS);
+    console.log("The whole process took this many milliseconds to complete:", (endTS - startTS));
+    process.exit(0);
+});
+
+

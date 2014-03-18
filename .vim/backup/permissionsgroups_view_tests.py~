@@ -1,0 +1,1074 @@
+# -*- coding: utf-8 -*-
+
+from ymc.lib import authentication as ApiAuthentication
+
+from ymc.model import User
+from ymc.model import Game
+from ymc.model import Developer
+from ymc.model import Publisher
+from ymc.model import UsersGames
+
+from django.test.client import Client
+from django.forms.models import model_to_dict
+from django.utils.dateformat import format
+
+import datetime
+import calendar
+from django.utils.timezone import utc
+import unittest, json, re
+
+from django.test import TestCase
+from django.test import RequestFactory
+
+from api.views import permissionsgroups as ApiPermissionsGroupsView
+
+def test_cases():
+    return [
+#        'test_register_success',
+#        'test_login_success',
+#        'test_games_success',
+#        'test_games_new_success',
+#        'test_register_failure_bad_input',
+#        'test_login_failure',
+#        'test_games_failure',
+#        'test_games_new_failure',
+#        'test_uids_without_id_success',
+#        'test_uids_with_id_success',
+#        'test_index_success',
+#        'test_index_failure',
+#        'test_show_success',
+#        'test_show_failure',
+        'test_delete_success',
+        'test_delete_failure',
+    ]
+
+"""
+    DeveloperTestCase
+"""
+class PermissionsGroupsViewTestCase(TestCase):
+
+    API_FAIL = 0
+    API_SUCCESS = 1
+
+    """
+    # Build up a user object
+    """
+    def setUp(self):
+        values = dict(
+            username='stindill',
+            password='changeme',
+            email='scott@ymcnetwork.com',
+            first_name='Scott',
+            last_name='Tindill',
+        )
+
+        self.user = User.Build(values)
+        self.user.is_admin = True
+        self.user.GenerateForgotPasswordToken()
+        self.user.save()
+        self.user.login()
+
+
+        dev_values = dict(
+            name='YMC Dev',
+        );
+        self.developer = Developer.Build(dev_values)
+        self.developer.save()
+
+        pub_values = dict(
+            name='YMC Pub',
+        );
+        self.publisher = Publisher.Build(dev_values)
+        self.publisher.save()
+
+        values = dict(
+            title='test',
+            developer_id = self.developer.id,
+            publisher_id = self.publisher.id,
+            ymc_id='77777777777777777777777',
+        )
+
+        self.games = Game.Build(values)
+        self.games.save()
+
+        values = dict(
+            title='test allow login no register',
+            developer_id = self.developer.id,
+            publisher_id = self.publisher.id,
+            ymc_id='99999999999999999999999',
+            allow_unregistered_login=True,
+        )
+
+        self.games_noreg = Game.Build(values)
+        self.games_noreg.save()
+
+
+        self.request_factory = RequestFactory()
+
+        self.groups = [
+                {'name' : 'developer', 'obj': self.developer},
+                {'name' : 'publisher', 'obj': self.publisher},
+            ]
+
+
+    """
+    # Not sure what to do here
+    """
+    def tearDown(self):
+        self.user = None
+
+
+    """
+        *****************************************
+        ************* untyped vers **************
+        *****************************************
+    """
+
+
+    def test_register_success(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_register_success_typed(self, group)
+
+    def test_login_success(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_login_success_typed(self, group)
+
+    def test_games_success(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_games_success_typed(self, group)
+
+    def test_games_new_success(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_games_new_success_typed(self, group)
+
+    def test_register_failure_bad_input(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_register_failure_bad_input_typed(self, group)
+
+    def test_login_failure(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_login_failure_typed(self, group)
+
+    def test_games_failure(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_games_failure_typed(self, group)
+
+    def test_games_new_failure(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_games_new_failure_typed(self, group)
+
+    def test_uids_without_id_success(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_uids_without_id_success_typed(self, group)
+
+    def test_uids_with_id_success(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_uids_with_id_success_typed(self, group)
+
+    def test_index_success(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_index_success_typed(self, group)
+
+    def test_index_failure(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_index_failure_typed(self, group)
+
+    def test_show_success(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_show_success_typed(self, group)
+
+    def test_show_failure(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_show_failure_typed(self, group)
+
+    def test_delete_success(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_delete_success_typed(self, group)
+
+    def test_delete_failure(self):
+        for group in self.groups:
+            PermissionsGroupsViewTestCase.test_delete_failure_typed(self, group)
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  register  ***************
+        *****************************************
+    """
+
+
+    def test_register_success_typed(self, group):
+        print('\n========== test_register_success_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        if (group['name'] == 'developer'):
+            initial_num_devs = User.objects.filter(developer_id=group['obj'].id).count()
+        elif (group['name'] == 'publisher'):
+            initial_num_devs = User.objects.filter(publisher_id=group['obj'].id).count()
+        else:
+            raise Exception("whoops. unknown group")
+
+        req_data = {
+                'email' : self.user.email,
+                'username' : self.user.username,
+                'password' : 'changeme',
+                group['name']+'_name' : group['obj'].name,
+                'register_as_'+group['name'] : True,
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/register'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+
+        if (group['name'] == 'developer'):
+            new_num_devs = User.objects.filter(developer_id=group['obj'].id).count()
+        elif (group['name'] == 'publisher'):
+            new_num_devs = User.objects.filter(publisher_id=group['obj'].id).count()
+        else:
+            raise Exception("whoops. unknown group")
+
+        self.assertEqual(new_num_devs, (initial_num_devs + 1))
+
+
+    def test_register_failure_bad_input_typed(self, group):
+        print('\n========== test_register_failure_bad_input_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        print("1. user exists")
+        req_data = {
+                'email' : self.user.email,
+                'username' : self.user.username,
+                'password' : 'changeme',
+                group['name']+'_name' : group['obj'].name,
+                # 'register_as_'+group['name'] : True,
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/register'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], "User Already Exists")
+
+
+        print("2. user already " + group['name'])
+        group['obj'].assign_self_to_model(self.user)
+        self.user.save()
+
+        req_data = {
+                'email' : self.user.email,
+                'username' : self.user.username,
+                'password' : 'changeme',
+                group['name']+'_name' : group['obj'].name,
+                'register_as_'+group['name'] : True,
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/register'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], "User Already " + group['name'].capitalize())
+
+
+
+        print("3. bad password")
+        req_data = {
+                'email' : self.user.email,
+                'username' : self.user.username,
+                'password' : 'incorrect',
+                group['name']+'_name' : group['obj'].name,
+                'register_as_'+group['name'] : True,
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/register'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], "Failed to authenticate")
+
+
+
+        print("4. bad _sig")
+        req_data = {
+                'email' : self.user.email,
+                'username' : self.user.username,
+                'password' : 'changeme',
+                group['name']+'_name' : group['obj'].name,
+                'register_as_'+group['name'] : True,
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = 'incorrect signature'
+
+        url = '/api/'+group['name']+'s/register'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], 'Signature Error')
+
+
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  login  ***************
+        *****************************************
+    """
+
+
+    def test_login_success_typed(self, group):
+        print('\n========== test_login_success_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        group['obj'].assign_self_to_model(self.user)
+        self.user.InvalidateAccessToken()
+        self.user.save()
+        self.assertFalse(self.user.IsTokenValid())
+
+        req_data = {
+                'email' : self.user.email,
+                'username' : self.user.username,
+                'password' : 'changeme',
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/login'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        reloaded_user = User.objects.get(id=self.user.id)
+        self.assertTrue(reloaded_user.IsTokenValid())
+
+        self.assertEqual(res_json['response']['access_token'], reloaded_user.access_token)
+        self.assertEqual(res_json['response']['expires'], int(format(reloaded_user.access_token_expiry, u'U')))
+        self.assertEqual(res_json['response']['email'], reloaded_user.email)
+        self.assertEqual(res_json['response']['username'], reloaded_user.username)
+        self.assertEqual(res_json['response']['first_name'], reloaded_user.first_name)
+        self.assertEqual(res_json['response']['last_name'], reloaded_user.last_name)
+
+
+
+
+    def test_login_failure_typed(self, group):
+        print('\n========== test_login_failure_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        print "1. bad password"
+        group['obj'].assign_self_to_model(self.user)
+        self.user.InvalidateAccessToken()
+        self.user.save()
+        self.assertFalse(self.user.IsTokenValid())
+
+        req_data = {
+                'email' : self.user.email,
+                'username' : self.user.username,
+                'password' : 'bad password',
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/login'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], "Failed to authenticate " + group['name'])
+        reloaded_user = User.objects.get(id=self.user.id)
+        self.assertFalse(reloaded_user.IsTokenValid())
+
+        print "2. bad username/email"
+        group['obj'].assign_self_to_model(self.user)
+        self.user.InvalidateAccessToken()
+        self.user.save()
+        self.assertFalse(self.user.IsTokenValid())
+
+        req_data = {
+                'email' : 'incorrect@email.com',
+                'username' : 'incorrect-username',
+                'password' : 'changeme',
+                'gid' : self.games.ymc_id,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/login'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+        print res_json
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], "Failed to authenticate " + group['name'])
+        reloaded_user = User.objects.get(id=self.user.id)
+        self.assertFalse(reloaded_user.IsTokenValid())
+
+
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  games  ***************
+        *****************************************
+    """
+
+
+    def test_games_success_typed(self, group):
+        print('\n========== test_games_success_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        if (group['name'] == 'developer'):
+            self.user.developer = group['obj']
+        elif (group['name'] == 'publisher'):
+            self.user.publisher = group['obj']
+        else:
+            raise Exception("whoops. unknown group")
+        self.user.save()
+
+        req_data = {
+                'uid' : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        self.games.developer = None
+        self.games.publisher = None
+        self.games.save()
+
+        url = '/api/'+group['name']+'s/games/' + str(group['obj'].id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        game_ymc_ids = map(lambda x: x['ymc_id'], res_json['response']['games'])
+        self.assertNotIn(self.games.ymc_id, game_ymc_ids)
+
+        if (group['name'] == 'developer'):
+            self.games.developer = group['obj']
+        elif (group['name'] == 'publisher'):
+            self.games.publisher = group['obj']
+        else:
+            raise Exception("whoops. unknown group")
+        self.games.save()
+
+        url = '/api/'+group['name']+'s/games/' + str(group['obj'].id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        game_ymc_ids = map(lambda x: x['ymc_id'], res_json['response']['games'])
+        self.assertIn(self.games.ymc_id, game_ymc_ids)
+
+
+
+
+    def test_games_failure_typed(self, group):
+
+        print('\n========== test_games_failure_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        if (group['name'] == 'developer'):
+            self.games.developer = group['obj']
+        elif (group['name'] == 'publisher'):
+            self.games.publisher = group['obj']
+        else:
+            raise Exception("whoops. unknown group")
+        self.games.save()
+
+        new_group = group['obj'].__class__.Build({'name': 'YMC2'})
+        new_group.save()
+
+        cases = [
+                {'name': 'auth failure', 'message': 'Failed to authenticate '+group['name'],
+                    'data': {
+                        'uid': self.user.id,
+                        'token': 'bad token',
+                        'group_id': str(group['obj'].id)
+                    },
+                },
+                {'name': 'nonexistant group id', 'message': 'Incorrect '+group['name']+' id',
+                    'data': {
+                        'uid': self.user.id,
+                        'token': self.user.access_token,
+                        'group_id': str(9999999)
+                    },
+                },
+                {'name': 'group id doesn\'t match user', 'message': 'Incorrect '+group['name']+' id',
+                    'data': {
+                        'uid': self.user.id,
+                        'token': self.user.access_token,
+                        'group_id': str(new_group.id)
+                    },
+                }
+            ]
+
+        for idx, case in enumerate(cases):
+            print str(idx+1) + ". " + case['name']
+            case['data']['_sig'] = ApiAuthentication.Sign(case['data'])
+            url = '/api/'+group['name']+'s/games/'+case['data']['group_id']
+            res = client.get(url, data=case['data'], **{'wsgi.url_scheme':'https'})
+            res_json = json.loads(res.content)
+            self.assertEqual(res_json['status'], self.API_FAIL)
+            self.assertEqual(res_json['message'], case['message'])
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  games_new  ***************
+        *****************************************
+    """
+
+
+    def test_games_new_success_typed(self, group):
+        print('\n========== test_games_new_success_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        if (group['name'] == 'developer'):
+            self.user.developer = group['obj']
+        elif (group['name'] == 'publisher'):
+            self.user.publisher = group['obj']
+        else:
+            raise Exception("whoops. unknown group")
+        self.user.save()
+
+        init_num_games = Game.objects.all().count()
+        game_title = 'New Game'
+
+        req_data = {
+                'uid' : self.user.id,
+                'title' : game_title,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/games/new/' + str(group['obj'].id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        self.assertEqual(res_json['response']['game']['title'], game_title)
+
+        resulting_num_games = Game.objects.all().count()
+        self.assertEqual(init_num_games, (resulting_num_games - 1))
+
+
+
+    def test_games_new_failure_typed(self, group):
+        print('\n========== test_games_new_failure_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        if (group['name'] == 'developer'):
+            self.games.developer = group['obj']
+        elif (group['name'] == 'publisher'):
+            self.games.publisher = group['obj']
+        else:
+            raise Exception("whoops. unknown group")
+        self.games.save()
+
+        new_group = group['obj'].__class__.Build({'name': 'YMC2'})
+        new_group.save()
+
+        cases = [
+                {'name': 'auth failure', 'message': 'Failed to authenticate '+group['name'],
+                    'data': {
+                        'uid': self.user.id,
+                        'token': 'bad token',
+                        'group_id': str(group['obj'].id)
+                    },
+                },
+                {'name': 'nonexistant group id', 'message': 'Incorrect '+group['name']+' id',
+                    'data': {
+                        'uid': self.user.id,
+                        'token': self.user.access_token,
+                        'group_id': str(9999999)
+                    },
+                },
+                {'name': 'group id doesn\'t match user', 'message': 'Incorrect '+group['name']+' id',
+                    'data': {
+                        'uid': self.user.id,
+                        'token': self.user.access_token,
+                        'group_id': str(new_group.id)
+                    },
+                }
+            ]
+
+        for idx, case in enumerate(cases):
+            print str(idx+1) + ". " + case['name']
+            case['data']['_sig'] = ApiAuthentication.Sign(case['data'])
+            url = '/api/'+group['name']+'s/games/new/'+case['data']['group_id']
+            res = client.get(url, data=case['data'], **{'wsgi.url_scheme':'https'})
+            res_json = json.loads(res.content)
+            self.assertEqual(res_json['status'], self.API_FAIL)
+            self.assertEqual(res_json['message'], case['message'])
+
+
+
+
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  uids  ***************
+        *****************************************
+    """
+
+
+    def test_uids_without_id_success_typed(self, group):
+        print('\n========== test_uids_without_id_success_'+group['name']+' ==========\n')
+
+        if (group['name'] == 'developer'):
+            self.user.developer = self.developer
+        elif (group['name'] == 'publisher'):
+            self.user.publisher = self.publisher
+        else:
+            pass
+        self.user.save()
+
+        extraneous_group = group['obj'].__class__.Build({'name':'Extraneous Group'})
+        extraneous_group.save()
+
+        client = Client()
+
+        req_data = {
+            'uid'   : self.user.id,
+            'token' : self.user.access_token,
+        }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/admin/'+group['name']+'s/uids'
+        print "url: "+url
+        res = client.get(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+
+        if (group['name'] == 'developer'):
+            group = self.developer
+        elif (group['name'] == 'publisher'):
+            group = self.publisher
+        else:
+            group = None
+        self.assertIn(str(group.id), res_json['response'].keys())
+        self.assertIn(str(extraneous_group.id), res_json['response'].keys())
+
+        self.assertEqual(res_json['response'][str(group.id)], [self.user.id])
+
+
+
+
+    def test_uids_with_id_success_typed(self, group):
+        print('\n========== test_uids_without_id_success_'+group['name']+' ==========\n')
+
+        if (group['name'] == 'developer'):
+            self.user.developer = self.developer
+        elif (group['name'] == 'publisher'):
+            self.user.publisher = self.publisher
+        else:
+            pass
+        self.user.save()
+
+        extraneous_group = group['obj'].__class__.Build({'name':'Extraneous Group'})
+        extraneous_group.save()
+
+        client = Client()
+
+        req_data = {
+            'uid'   : self.user.id,
+            'token' : self.user.access_token,
+        }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/admin/'+group['name']+'s/uids/'+str(group['obj'].id)
+        res = client.get(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        print res_json
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+
+        if (group['name'] == 'developer'):
+            group = self.developer
+        elif (group['name'] == 'publisher'):
+            group = self.publisher
+        else:
+            group = None
+        self.assertIn(str(group.id), res_json['response'].keys())
+        self.assertNotIn(str(extraneous_group.id), res_json['response'].keys())
+
+        self.assertEqual(res_json['response'][str(group.id)], [self.user.id])
+
+
+
+
+    """
+        *****************************************
+        **************  index  ***************
+        *****************************************
+    """
+
+
+    def test_index_success_typed(self, group):
+        print('\n========== test_index_success_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        self.assertTrue(self.user.is_admin)
+
+        group_names = ['g1', 'g2', 'g3']
+        for name in group_names:
+            new_group = group['obj'].__class__.Build({'name': name})
+            new_group.save()
+
+        req_data = {
+                'uid' : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        self.assertIn(self.developer.name, map(lambda pair: pair['name'], res_json['response']))
+        for name in group_names:
+            self.assertIn(name, map(lambda pair: pair['name'], res_json['response']))
+
+
+
+    def test_index_failure_typed(self, group):
+        print('\n========== test_index_failure_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        self.user.is_admin = False
+        self.user.save()
+
+        group_names = ['g1', 'g2', 'g3']
+        for name in group_names:
+            new_group = group['obj'].__class__.Build({'name': name})
+            new_group.save()
+
+        req_data = {
+                'uid' : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/'
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['response'], None)
+        self.assertEqual(res_json['message'], 'Failed to authenticate admin user')
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  show  ***************
+        *****************************************
+    """
+
+
+    def test_show_success_typed(self, group):
+        print('\n========== test_show_success_'+group['name']+' ==========\n')
+
+        group['obj'].assign_self_to_model(self.user)
+        self.user.save()
+
+        client = Client()
+
+        self.user
+
+        req_data = {
+                'uid' : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/'+str(group['obj'].id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        self.assertEqual(res_json['response']['name'], group['obj'].name)
+        self.assertEqual(res_json['response']['id'], group['obj'].id)
+
+
+
+    def test_show_failure_typed(self, group):
+        print('\n========== test_show_failure_'+group['name']+' ==========\n')
+
+        group['obj'].assign_self_to_model(self.user)
+        self.user.save()
+
+        client = Client()
+
+        good_data = {
+                'uid' : self.user.id,
+                'token' : self.user.access_token,
+            }
+        good_data['_sig'] = ApiAuthentication.Sign(good_data)
+
+        print "1. bad user or token"
+
+        req_data = good_data.copy()
+        req_data['uid'] = 99999999
+        url = '/api/'+group['name']+'s/'+str(group['obj'].id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], 'Failed to authenticate ' + group['name'])
+
+        req_data = good_data.copy()
+        req_data['token'] = 'bad-token'
+        url = '/api/'+group['name']+'s/'+str(group['obj'].id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], 'Failed to authenticate ' + group['name'])
+
+        print "2. group not found"
+
+        req_data = good_data.copy()
+        url = '/api/'+group['name']+'s/'+str(9999999)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], 'Group not found')
+
+        print "3. group not associated with user"
+
+        if (group['name'] == 'developer'):
+            self.user.developer = None
+        elif (group['name'] == 'publisher'):
+            self.user.publisher = None
+        else:
+            raise Exception("unrecognized group type: " + group['name'])
+        self.user.save()
+
+        req_data = good_data.copy()
+        url = '/api/'+group['name']+'s/'+str(group['obj'].id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        self.assertEqual(res_json['status'], self.API_FAIL)
+        self.assertEqual(res_json['message'], 'Access denied')
+
+
+
+
+
+
+    """
+        *****************************************
+        **************  delete  ***************
+        *****************************************
+    """
+
+
+    def test_delete_success_typed(self, group):
+        print('\n========== test_delete_success_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        group['obj'].assign_self_to_model(self.user)
+        group['obj'].assign_self_to_model(self.games)
+        self.user.save()
+        self.games.save()
+        self.user = User.objects.get(id=self.user.id)
+        self.games = Game.objects.get(id=self.games.id)
+
+        if (group['name'] == 'developer'):
+            self.assertEqual(self.user.developer.id, group['obj'].id)
+        elif (group['name'] == 'publisher'):
+            self.assertEqual(self.user.publisher.id, group['obj'].id)
+        else:
+            raise Exception("unrecognized group type: " + group['name'])
+
+        self.user.is_admin = True
+        self.user = User.objects.get(id=self.user.id)
+        self.assertTrue(self.user.is_admin)
+
+        req_data = {
+                'uid' : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+        url = '/api/'+group['name']+'s/delete/' + str(group['obj'].id)
+        res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+        res_json = json.loads(res.content);
+
+        self.assertEqual(res_json['status'], self.API_SUCCESS)
+        self.assertEqual(res_json['response'][group['name']]['name'], group['obj'].name)
+        self.assertEqual(res_json['response'][group['name']]['id'], group['obj'].id)
+
+        found_groups = group['obj'].__class__.objects.filter(id=group['obj'].id)
+        self.assertEqual(len(found_groups), 0)
+
+        self.user = User.objects.get(id=self.user.id)
+        self.games = Game.objects.get(id=self.games.id)
+        if (group['name'] == 'developer'):
+            self.assertEqual(self.user.developer, None)
+            self.assertEqual(self.games.developer, None)
+        elif (group['name'] == 'publisher'):
+            self.assertEqual(self.user.publisher, None)
+            self.assertEqual(self.games.publisher, None)
+        else:
+            raise Exception("unrecognized group type: " + group['name'])
+
+
+
+
+
+
+    def test_delete_failure_typed(self, group):
+        print('\n========== test_delete_failure_'+group['name']+' ==========\n')
+
+        client = Client()
+
+        group['obj'].assign_self_to_model(self.user)
+        group['obj'].assign_self_to_model(self.games)
+        self.user.save()
+        self.games.save()
+        self.user = User.objects.get(id=self.user.id)
+        self.games = Game.objects.get(id=self.games.id)
+
+        if (group['name'] == 'developer'):
+            self.assertEqual(self.user.developer.id, group['obj'].id)
+        elif (group['name'] == 'publisher'):
+            self.assertEqual(self.user.publisher.id, group['obj'].id)
+        else:
+            raise Exception("unrecognized group type: " + group['name'])
+
+        cases = [
+                {'name': 'auth failure', 'message': 'Failed to authenticate admin user',
+                    'data': {
+                        'uid': self.user.id,
+                        'token': 'bad token',
+                    },
+                    'group_id': group['obj'].id,
+                },
+                {'name': 'not admin', 'message': 'Failed to authenticate admin user',
+                    'data': {
+                        'uid': self.user.id,
+                        'token': self.user.access_token,
+                    },
+                    'group_id': group['obj'].id, 'not_admin': True,
+                },
+                {'name': 'bad group_id', 'message': 'Incorrect '+group['name']+' id',
+                    'data': {
+                        'uid': self.user.id,
+                        'token': self.user.access_token,
+                    },
+                    'group_id': 99999999,
+                },
+            ]
+
+        for idx, case in enumerate(cases):
+            print str(idx+1) + ". " + case['name'];
+
+            if ('not_admin' in case.keys()):
+                self.user.is_admin = False
+            else:
+                self.user.is_admin = True
+            self.user.save()
+
+            req_data = case['data']
+            req_data['_sig'] = ApiAuthentication.Sign(req_data)
+
+            url = '/api/'+group['name']+'s/delete/' + str(case['group_id'])
+            res = client.post(url, data=req_data, **{'wsgi.url_scheme':'https'})
+            res_json = json.loads(res.content);
+
+            self.assertEqual(res_json['status'], self.API_FAIL)
+            self.assertEqual(res_json['message'], case['message'])
+
+            found_groups = group['obj'].__class__.objects.filter(id=group['obj'].id)
+            self.assertTrue(len(found_groups) > 0)
+
+            self.user = User.objects.get(id=self.user.id)
+            self.games = Game.objects.get(id=self.games.id)
+            if (group['name'] == 'developer'):
+                self.assertEqual(self.user.developer.id, group['obj'].id)
+                self.assertEqual(self.games.developer.id, group['obj'].id)
+            elif (group['name'] == 'publisher'):
+                self.assertEqual(self.user.publisher.id, group['obj'].id)
+                self.assertEqual(self.games.publisher.id, group['obj'].id)
+            else:
+                raise Exception("unrecognized group type: " + group['name'])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+print("\n\n\n\n\n")

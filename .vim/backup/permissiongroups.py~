@@ -1,0 +1,62 @@
+from django.db import models
+from django.db.models import Q
+
+from django.core import validators
+
+from django.utils.timezone import utc
+import hashlib, datetime, uuid
+
+from ymc.lib import httprequest
+from ymc_platform import settings
+
+"""
+    PermissionGroup model
+"""
+class PermissionGroup(models.Model):
+
+    # Field List
+    name = models.CharField(max_length=255, null=False, blank=False)
+    created_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        app_label = 'ymc'
+
+    @classmethod
+    def Build(klass, values):
+        group = klass.(**values)
+
+        group.created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        group.created_at = group.created_at.astimezone(utc)
+
+        return group
+
+    @classmethod
+    def FindByName(klass, name):
+
+        if( not name):
+            return None
+
+        queryset = klass.objects.filter(Q(name__iexact=name))[:1]
+
+        if(queryset.exists()):
+            return queryset[0]
+
+        return None
+
+    @classmethod
+    def FindByUser(klass, user):
+        raise Exception("Cannot call FindByUser on abstract class PermissionsGroup.")
+
+
+    @classmethod
+    def GroupType(klass):
+        return klass.__name__.upper()
+
+    @classmethod
+    def ForeignKeyIdentifier(klass):
+        return klass.__name__.lower() + "_id"
+
+    def assign_self_to_user(self, user):
+        attr_name = self.__class__.__name__.lower()
+        setattr(user, attr_name, self)

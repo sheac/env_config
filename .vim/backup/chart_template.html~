@@ -1,0 +1,44 @@
+<div class="chart-title-bar">
+    <span ng-show="isViaIFrame">
+        <h3>{{language+'.charts.titles.'+chart_title | translate}}{{language+'.chart' | translate}}</h3>
+    </span>
+    <span ng-show="!isViaIFrame">
+        <h3>{{gameSelected.title}}</h3>
+    </span>
+</div>
+
+<h4>
+
+    <span ng-show="showAsDauWauMau">
+        <span ng-show="timeInterval=='day'">
+            {{language+'.charts.titles.dau' | translate}}
+        </span>
+        <span ng-show="timeInterval=='week'">
+            {{language+'.charts.titles.wau' | translate}}
+        </span>
+        <span ng-show="timeInterval=='month'">
+        {{language+'.charts.titles.mau' | translate}}
+        </span>
+    </span>
+    <span ng-show="!showAsDauWauMau && timeInterval">
+        {{language+'.charts.titles.'+chart_title | translate}}
+        {{language+'.charts.by_time_interval.'+timeInterval | translate}}
+    </span>
+
+    <span ng-show="isCurrencyBased">
+        {{language+'.charts.by_currency.'+selected_currency.abbrev | translate}}
+    </span>
+
+    <div class = "btn-group pull-right">
+        <button class="btn" ng-click="show('day')">{{language+'.charts.time_interval_options.30_days' | translate}}</button>
+        <button class="btn" ng-click="show('week')">{{language+'.charts.time_interval_options.24_weeks' | translate}}</button>
+        <button class="btn" ng-click="show('month')">{{language+'.charts.time_interval_options.12_months' | translate}}</button>
+    </div>
+</h4>
+
+<div>
+    <span>{{language+'.charts.chart_text.timezone_used' | translate}}</span>
+    <span>{{language+'.'+timezone.toLowerCase() | translate}}</span>
+</div>
+
+<ng-include src="'./view/dashboards/templates/'+chartType+'_template.html'"></ng-include>

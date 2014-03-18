@@ -1,0 +1,95 @@
+{% load static %}
+{% include "admin/header.html" %}
+{% load menu_items %}
+
+    <div class='grid_12'>
+        <h1>Edit {{user_fullname}}</h1>
+        <div class='hr'></div>
+    </div>
+    <div class='clear'></div>
+
+    <form action="{{ user_id|admin_users_edit }}" method="post">{% csrf_token %}
+    
+        <div class='grid_12'>
+            {{ form.non_field_errors }}
+        </div>
+    
+        <div class='admin-form'>
+            <div class='grid_4'>
+                <div class="field-wrapper">
+                    <label for="first_name">{{ form.first_name.label }}</label>
+                    {{ form.first_name }}
+                    {{ form.first_name.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="last_name">{{ form.last_name.label }}</label>
+                    {{ form.last_name }}
+                    {{ form.last_name.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="email">{{ form.email.label }}</label>
+                    {{ form.email }}
+                    {{ form.email.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="username">{{ form.username.label }}</label>
+                    {{ form.username }}
+                    {{ form.username.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="gender">{{ form.gender.label }}</label>
+                    {{ form.gender }}
+                    {{ form.gender.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="is_admin">{{ form.is_admin.label }}</label>
+                    {{ form.is_admin }}
+                    {{ form.is_admin.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="developer">{{ form.developer.label }}</label>
+                    {{ form.developer }}
+                    {{ form.developer.errors }}
+                </div>
+            </div>
+
+            <div class='grid_3 push_1'>
+                <div class="field-wrapper">
+                    <label for="joined_at">{{ form.joined_at.label }}</label>
+                    {{ form.joined_at }}
+                    {{ form.joined_at.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="last_login">{{ form.last_login.label }}</label>
+                    {{ form.last_login }}
+                    {{ form.last_login.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="last_login">{{ form.facebook_id.label }}</label>
+                    {{ form.facebook_id }}
+                    {{ form.facebook_id.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="last_login">{{ form.ip_address.label }}</label>
+                    {{ form.ip_address }}
+                    {{ form.ip_address.errors }}
+                </div>
+                <a href='{{ user_id|admin_users_password }}'><input type="button" value="Change Password"  class='button'/></a>
+            </div>
+        </div>
+        <div class='clear'></div>
+        <br/>
+        <input type="submit" value="Update User"  class='button'/>
+        <a href='{% admin_users %}'><input type="button" value="Cancel"  class='button'/></a>
+    </form>
+
+    <script type='text/javascript'>
+        $(document).ready(function() {
+            $('#id_joined_at').datepicker({});
+            $('#id_last_login').datepicker({});
+        });
+    </script>
+
+
+
+{% include "admin/footer.html" %}

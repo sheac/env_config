@@ -1,0 +1,66 @@
+<div class="grid_12">
+    <h2><?php echo __('Contact Us')?></h2>
+
+    <div class='clear'></div>
+    <div class='grid_12'>
+        <?php echo View::factory('shared/_validation')->set('model', array($contact_msg)) ?>
+    </div>
+
+    <br/><br/>
+
+    <?php echo Form::open(null, array('enctype' => 'multipart/form-data', 'class' => 'contact_us-form')); ?>
+
+        <table>
+            <tr class="tabletext">
+                <td>
+                    <div class='grid_1'>
+                        <?php echo Form::field_start($contact_msg, 'name') ?>
+                        <?php echo Form::label('name', __($contact_msg->label('name'))) ?><br/>
+                        <?php echo Form::input('name', $contact_msg->name) ?>
+                        <?php echo Form::field_end($contact_msg, 'name') ?>
+                    </div>
+                </td>
+                <td>
+                    <div class='grid_1'>
+                        <?php echo Form::field_start($contact_msg, 'email') ?>
+                        <?php echo Form::label('email', __($contact_msg->label('email'))) ?><br/>
+                        <?php echo Form::input('email',$contact_msg->email) ?>
+                        <?php echo Form::field_end($contact_msg, 'email') ?>
+                    </div>
+                </td>
+            </tr>
+            <tr class="tabletext lighter">
+                <td>
+                    <div class='grid_1'>
+                        <?php echo Form::field_start($contact_msg, 'subject') ?>
+                        <?php echo Form::label('subject', __($contact_msg->label('subject'))) ?><br/>
+                        <?php echo Form::input('subject', $contact_msg->subject) ?>
+                        <?php echo Form::field_end($contact_msg, 'subject') ?>
+                    </div>
+                </td>
+                <td>
+                    <div class='grid_1'>
+                        <?php echo Form::field_start($contact_msg, 'reason') ?>
+                        <?php echo Form::label('reason', __($contact_msg->label('reason'))) ?><br/>
+                        <?php echo Form::select('reason', Model_ContactMessage::get_reason_options(), $contact_msg->reason) ?>
+                        <?php echo Form::field_end($contact_msg, 'reason') ?>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- TODO: limit number of chars input and style the size -->
+        <div class='grid_1 bodytext'>
+            <?php echo Form::field_start($contact_msg, 'message') ?>
+            <?php echo Form::label('message', __($contact_msg->label('message'))) ?><br/>
+            <?php echo Form::textarea('message', $contact_msg->message, array()) ?>
+            <?php echo Form::field_end($contact_msg, 'message') ?>
+        </div>
+
+        <br/>
+
+        <?php echo Form::submit('submit', 'Submit', array('class' => 'button')) ?>
+
+    <?php echo Form::close(); ?>
+</div>
+

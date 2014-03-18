@@ -1,0 +1,34 @@
+var database = require('../database');
+var collectionEvent = database.eventCollection;
+var utime = require('../lib/utime').getTimePoint
+var fillGap = require('../lib/utime').fillGap
+
+exports.api = function(req,res){
+
+    var ymc_id              = req.query.token,
+        limit               = req.query.limit,
+        last_received_time  = req.query.last_received_time,
+        last_received_ids   = JSON.parse(req.query.last_received_ids);
+
+    var query_criteria = {
+            "properties.YA0token": ymc_id,
+        };
+
+    if (last_received_ids.length > 0) {
+        query_criteria["properties.time"] = {"$gte": last_received_time};
+        query_criteria["_id"] = {"$nin": last_received_ids};
+    }
+
+    var query_options = {
+            sort: "_id",
+            //limit: limit,
+            limit: 3, // DEBUG!!
+        };
+
+    collectionEvent.find(
+        query_criteria,
+        query_options,
+        function(err,result){
+            res.send(result);
+        });
+};

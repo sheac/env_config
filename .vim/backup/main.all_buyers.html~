@@ -1,0 +1,35 @@
+<div ng-controller='allBuyersController'>
+
+    <h4>
+        {{language+'.charts.titles.all_buyers' | translate}}{{language+'.charts.by_time_interval.'+timeInterval | translate}}
+
+        <div class = "btn-group pull-right">
+            <button class="btn" ng-click="show('day')">{{language+'.charts.time_interval_options.30_days' | translate}}</button>
+            <button class="btn" ng-click="show('week')">{{language+'.charts.time_interval_options.24_weeks' | translate}}</button>
+            <button class="btn" ng-click="show('month')">{{language+'.charts.time_interval_options.12_months' | translate}}</button>
+        </div>
+
+    </h4>
+
+    <div>
+        <span>{{language+'.charts.chart_text.timezone_used' | translate}}</span>
+        <span>{{language+'.'+timezone.toLowerCase() | translate}}</span>
+    </div>
+
+    <div id="myChart">
+        <svg style="height:400px"></svg>
+    </div>
+
+    <div>
+        <table class="table table-striped">
+
+            <tbody>
+            <tr ng-repeat="line in rawData">
+                <td>{{line[0] | date:'MMM dd yyyy'}}</td>
+                <td>{{line[1]}}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>

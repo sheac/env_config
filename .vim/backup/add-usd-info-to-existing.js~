@@ -1,0 +1,72 @@
+var t2c2t = require('./tier2currency2tier.js');
+var mongo = require('mongojs');
+var async = require('async');
+
+var addInfoToCollection = function(collection, topCallback) {
+
+    var _id2usdMaps = [];
+
+    async.series({
+
+        populate_id2usd: function(callback) {
+            collection.find({event: "YA0charge"}).forEach(function(err, doc) {
+                if (err) { return callback(err); }
+
+                if (!!doc) {
+                    var currency    = doc.properties.currency,
+                        amt         = doc.properties.amount;
+                    var tier = t2c2t.convertPriceToTier(amt, currency);
+                    var usd = !!tier ? t2c2t.convertTierToPrice(tier, currency) : null;
+                    _id2usdMaps.push({_id: doc._id, usd: usd});
+                } else {
+                    console.log("calling populate_id2usd callback");
+                    return callback();
+                }
+            });
+        },
+
+        addUsdInfoToAll: function(callback) {
+            async.each(_id2usdMaps, function(_id2usdMap, eachCallback){
+                var _id     = _id2usdMap['_id'],
+                    usd     = _id2usdMap['usd'];
+
+                var updateHash = !!usd ?
+                        {$set: {"properties.YA0USD": usd}} :
+                        {$set: {"properties.YA0USD": 0}, $addToSet: {"properties.YA0error": "YA0USD"}};
+                                    
+                collection.findAndModify({
+                    query: {_id: _id},
+                    update: updateHash,
+                }, function(err, doc) {
+                    if (err) return callback(err);
+                    eachCallback();
+                });
+            },
+            function(err){
+                if (err) return callback(err);
+
+                console.log("calling addUsdInfoToAll callback");
+                callback();
+            });
+        },
+    },
+        
+    function(err) {
+        if (err) throw err;
+
+        if (typeof topCallback !== "undefined") {
+            topCallback();
+        }
+    });
+}
+
+if (require.main === module) {
+    var events = require('../../reporter/database.js').eventCollection;
+    var sdkDebug = require('../../reporter/database.js').sdkDebugCollection;
+    var callback = function() { console.log("finished updating a collection"); }
+    addInfoToCollection(events, callback);
+    addInfoToCollection(sdkDebug, callback);
+} else {
+    exports.addInfoToCollection = addInfoToCollection;
+}
+

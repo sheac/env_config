@@ -1,0 +1,121 @@
+<div id="login_app" ng-controller='loginController'>
+    <header class="bgblue">
+        <div class="container">
+            <a href="http://ya.ymcnetwork.com/" class=""><img src="assets/logo.png" alt="YMCA" title="YMCA" /></a>
+            <ul>
+
+                <li class="follow">
+                    <a href="https://twitter.com/ymca" target="_blank" class="github-follow-button">
+                        <img src="/assets/twitter.png" alt=""/>
+                        {{language+'.landing_page.twitter_button' | translate}}
+                    </a>
+                </li>
+            </ul>
+
+            <div class="dropdown pull-right">
+                <button class="span2 btn dropdown-toggle">{{language+'.dashboard.header.options_button' | translate}}
+                    <b class="caret"></b>
+                </button>
+                <ul class="dropdown-menu">
+                    <li>
+                        <a ng-click="setLanguage('EN')">{{'EN.english' | translate}}</a>
+                    </li>
+                    <li>
+                        <a ng-click="setLanguage('ZH')">{{'ZH.chinese' | translate}}</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </header>
+
+    <div id="splash">
+        <div class="container">
+            <div class="row">
+                <div class="span6">
+                    <div class="section">
+
+                        <h1>{{language+'.landing_page.main_motto' | translate}}</h1>
+                        <h3>{{language+'.landing_page.sub_motto' | translate}}</h3>
+                        <br/><br/>
+                        <a class="btn btn-success btn-large" href="http://developer.ymcgames.com/">{{language+'.landing_page.cta' | translate}}</a>
+
+                    </div>
+                </div>
+
+                <div class="span6">
+                    <div class="section">
+                        <form role="form" id="login_form">
+                            <h2 class="form-signin-heading">{{language+'.landing_page.already_registered' | translate}}</h2>
+                            <div class="form-group">
+                                <label for="exampleInputEmail1">{{language+'.landing_page.email_label' | translate}}</label>
+                                <input id="login_email" type="text" class="input-block-level" ng-model="data.email" placeholder="Email">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="exampleInputPassword1">{{language+'.landing_page.password_label' | translate}}</label>
+                                <input id="login_password" type="password" class="input-block-level" ng-model="data.password" placeholder="Password">
+                            </div>
+
+                            <button id="login_button" class="btn btn-large btn-primary" type="submit" ng-click="send()">{{language+'.landing_page.login_button' | translate}}</button>
+
+                            <select ng-model="role" ng-options="r.label for r in roles">
+                            </select>
+                            <br/>
+                            <p class="text-alert alert-error">{{message}}</p>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="content">
+
+        <div class="container">
+
+            <div class="row">
+
+                <div class="span6">
+
+                    <div class="section">
+                        <h2>{{language+'.landing_page.col1_header' | translate}}</h2>
+                        <p>{{language+'.landing_page.col1_p1' | translate}}</p>
+                        <p>{{language+'.landing_page.col1_p2' | translate}}</p>
+                        <p>{{language+'.landing_page.col1_p3' | translate}}</p>
+
+
+
+                    </div>
+
+                </div>
+
+                <div class="span6">
+
+                    <div class="section">
+                        <h2>{{language+'.landing_page.col2_header' | translate}}</h2>
+                        <p>{{language+'.landing_page.col2_p1' | translate}}</p>
+                        <ul>
+                            <li><a href="/docs/index.html">{{language+'.landing_page.col2_li1' | translate}}</a></li>
+                            <li><a href="/docs/index.html#for-android">{{language+'.landing_page.col2_li2' | translate}}</a></li>
+                            <li><a href="">{{language+'.landing_page.col2_li3' | translate}}</a></li>
+                            <li><a href="">{{language+'.landing_page.col2_li4' | translate}}</a></li>
+                            <li><a href="">{{language+'.landing_page.col2_li5' | translate}}</a></li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+    <footer>
+        <div class="container">
+            {{language+'.landing_page.footer_copyright' | translate}}
+        </div>
+    </footer>
+</div>
+
+

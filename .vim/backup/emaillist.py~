@@ -1,0 +1,56 @@
+from django.http import HttpResponse, HttpRequest, HttpResponseRedirect
+from django.shortcuts import render, redirect
+from ymc.model.users import User
+from ymc.model.games import Game
+from ymc.model.usersgames import UsersGames
+from django.conf import settings
+from django.forms.models import model_to_dict
+from app import path
+import csv
+
+def verify(request):
+    if (request.method == 'GET'):
+        return render(request, 'emaillist/verify.html')
+
+    password = request.POST.get('password', None)
+    if (not password or password != settings.EMAIL_LIST_PASSWORD):
+        return redirect('/emaillist')
+    else:
+        games = map(lambda g: {'title': g.title, 'id': g.id}, Game.objects.all())
+        template_vars = {'password': password, 'games': games}
+        return render(request, 'emaillist/fetch.html', template_vars)
+
+def fetch_emails(request):
+    password = request.POST.get('password', None)
+    if (not password or password != settings.EMAIL_LIST_PASSWORD):
+        return redirect('/emaillist', errors=['invalid password'])
+
+    game_id = request.POST.get('game_id', None)
+    if (not game_id):
+        games = map(lambda g: {'title': g.title, 'id': g.id}, Game.objects.all())
+        template_vars = {'password': password, 'games': games, errors: ['no game selected']}
+        return render(request, 'emaillist/fetch.html', template_vars)
+
+    game = Game.objects.filter(id=game_id)
+    if (game.exists):
+        game = game[0]
+    else:
+        games = map(lambda g: {'title': g.title, 'id': g.id}, Game.objects.all())
+        template_vars = {'password': password, 'games': games, errors: ['game not found']}
+        return render(request, 'emaillist/fetch.html', template_vars)
+    user_ids = map(lambda ug: ug.users_id, UsersGames.objects.filter(games_id=game.id))
+    users = User.objects.filter(
+            id__in = user_ids,
+            ip_address__isnull = False,
+        ).exclude(
+            ip_address__in = settings.EMAIL_LIST_EXCLUDED_IP_ADDRESSES
+        )
+
+    response = HttpResponse(mimetype='text/csv')
+    csv_name = game.title+'-emails.csv'
+    response['Content-Disposition'] = 'attachment; filename='+csv_name
+
+    writer = csv.writer(response, dialect=csv.excel)
+    for user in users:
+        writer.writerow([user.email])
+    return response

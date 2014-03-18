@@ -1,0 +1,536 @@
+<?php
+/* The User Model has no table. It is just a proxy to the api.ymcgames.com User model*/
+
+class Model_User extends Model_Tabeless {
+
+    private $credentials = array();
+    private $database_representative = null;
+
+    const ENGLISH = 'en-us';
+    const CHINESE = 'ch';
+
+    const MODEL_USER_ADMIN = 0;
+    const MODEL_USER_DEV = 1;
+
+    protected $_languages = array(self::ENGLISH,self::CHINESE);
+
+    /*
+     */
+    public static function getLanguages(){
+        return array(self::ENGLISH,self::CHINESE);
+    }
+
+    /*
+    */
+    function __construct() {
+        $json_session = Session::instance()->get('session');
+
+        if( ! empty($json_session)) {
+            $this->credentials = json_decode($json_session, true);
+        }
+    }
+
+    /*
+    */
+    public function rules()
+    {
+        return array(
+            'last_name' => array(
+                array('not_empty'),
+            ),
+            'first_name' => array(
+                array('not_empty'),
+            ),
+            'username' => array(
+                array('not_empty'),
+            ),
+            'email' => array(
+                array('email'),
+            ),
+        );
+    }
+
+    /*
+    */
+    public function messages()
+    {
+        return array(
+            'first_name' => array(
+                'not_empty' => 'Please enter your first name',
+            ),
+            'last_name' => array(
+                'not_empty' => 'Please enter your last name',
+            ),
+            'email' => array(
+                'not_empty' => 'Please enter a valid email',
+                'email' => 'Please enter a valid email address',
+            ),
+            'username' => array(
+                'not_empty' => 'Please enter a valid username',
+            ),
+        );
+    }
+
+
+    /*
+    */
+    public function save()
+    {
+        Session::instance()->set('session', json_encode($this->credentials));
+    }
+
+    /*
+    */
+    public function login($email, $username, $password, $game_id)
+    {
+        $this->Logout();
+
+        $login_params = array(
+            'username' => $username,
+            'email' => $email,
+            'password' => $password,
+            'gid' => $game_id,
+        );
+
+        $YMC_api_response = YMC_API::UserLogin($login_params);
+
+        $status = Arr::get($YMC_api_response, 'status', 0);
+        $response = Arr::get($YMC_api_response, 'response');
+
+
+        if($status == 1) {
+            $this->credentials['uid'] = Arr::get($response, 'uid');
+            $this->credentials['access_token'] = Arr::get($response, 'access_token');
+            $this->credentials['expires'] = Arr::get($response, 'expires');
+
+            Session::instance()->set('session', json_encode($this->credentials));
+        }
+
+        return $YMC_api_response;
+    }
+
+    /*
+    */
+    public function developer_login($email, $username, $password, $game_id)
+    {
+        echo "holla back!";
+        $this->Logout();
+
+        $login_params = array(
+            'username' => $username,
+            'email' => $email,
+            'password' => $password,
+            'gid' => $game_id,
+        );
+
+        $YMC_api_response = YMC_API::DeveloperLogin($login_params);
+
+        $status = Arr::get($YMC_api_response, 'status', 0);
+        $response = Arr::get($YMC_api_response, 'response');
+
+
+        if($status == 1) {
+            $this->credentials['uid'] = Arr::get($response, 'uid');
+            $this->credentials['access_token'] = Arr::get($response, 'access_token');
+            $this->credentials['expires'] = Arr::get($response, 'expires');
+            $this->credentials['did'] = Arr::get($response, 'did');
+
+            Session::instance()->set('session', json_encode($this->credentials));
+        }
+
+        return $YMC_api_response;
+    }
+
+
+    /*
+    */
+    public function developer_register($email, $username, $password, $game_id, $developer_name)
+    {
+        $this->Logout();
+
+        $register_params = array(
+            'username' => $username,
+            'email' => $email,
+            'password' => $password,
+            'gid' => $game_id,
+            'developer_name' => $developer_name,
+        );
+
+        $YMC_api_response = YMC_API::DeveloperRegister($register_params);
+
+        $status = Arr::get($YMC_api_response, 'status', 0);
+        $response = Arr::get($YMC_api_response, 'response');
+
+
+        if($status == 1) {
+            $this->credentials['uid'] = Arr::get($response, 'uid');
+            $this->credentials['access_token'] = Arr::get($response, 'access_token');
+            $this->credentials['expires'] = Arr::get($response, 'expires');
+            $this->credentials['did'] = Arr::get($response, 'did');
+
+            Session::instance()->set('session', json_encode($this->credentials));
+        }
+
+        return $YMC_api_response;
+    }
+
+
+    /*
+    */
+    public function get_info()
+    {
+
+        $info_params = array(
+            'uid' => $this->uid,
+            'token' => $this->access_token,
+        );
+
+        $YMC_api_response = YMC_API::UserInfo($info_params);
+
+        $status = Arr::get($YMC_api_response, 'status', 0);
+        $response = Arr::get($YMC_api_response, 'response');
+
+        if($status == 1) {
+
+/*
+            $name = Arr::get($response, 'first_name')." ".Arr::get($response, 'last_name');
+            if( empty($name)) {
+                $name = Arr::get($response, 'username');
+            }
+*/
+
+
+            $this->credentials['username'] = Arr::get($response, 'username');
+            $this->credentials['name'] = Arr::get($response, 'first_name')." ".Arr::get($response, 'last_name');
+
+            if( empty($this->credentials['name'])) {
+                $this->credentials['name'] = $this->credentials['username'];
+            }
+
+            $this->credentials['email'] = Arr::get($response, 'email');
+
+            Session::instance()->set('session', json_encode($this->credentials));
+        }
+
+
+        return $YMC_api_response;
+    }
+
+
+    /*
+    */
+    static public function already_exists($email)
+    {
+        $params = array(
+            'email' => $email,
+        );
+
+        $YMC_api_response = YMC_API::UserExists($params);
+
+        $status = Arr::get($YMC_api_response, 'status', 0);
+
+        if($status == 1) {
+            return true;
+        }
+
+
+        return false;
+    }
+
+
+    public function is_admin()
+    {
+        $user_info = self::get_info();
+
+        $status = Arr::get($user_info, 'status', 0);
+        $response = Arr::get($user_info, 'response');
+
+
+        if($status == 1) {
+            return Arr::get($response, 'is_admin', FALSE);
+        }
+
+        return false;
+    }
+
+    public function get_user_type(){
+        if ($this->is_admin())
+            return self::MODEL_USER_ADMIN;
+        else
+            return self::MODEL_USER_DEV;
+    }
+
+    /*
+    */
+    public function developer_games()
+    {
+        $info_params = array(
+            'uid' => $this->uid,
+            'token' => $this->access_token,
+            'did' => $this->did,
+        );
+
+        if (!$info_params['did']) {
+            $info_params['did'] = true;
+        }
+
+        $YMC_api_response = YMC_API::DeveloperGames($info_params);
+
+
+        return $YMC_api_response;
+    }
+
+    /*
+    */
+    public function developer_new_game($game)
+    {
+        $new_game_params = array(
+            'uid' => $this->uid,
+            'token' => $this->access_token,
+            'did' => $this->did,
+            'title' => $game->title,
+            'platform' => $game->platform,
+        );
+
+        if (!$new_game_params['did']) {
+            $new_game_params['did'] = true;
+        }
+
+        $YMC_api_response = YMC_API::DeveloperNewGame($new_game_params);
+
+        return $YMC_api_response;
+    }
+
+
+    /*
+    */
+    public function find_game_by_ymc_id($ymc_id)
+    {
+        $game = Model_Game::find_by_ymc_id($ymc_id);
+
+        if($game->developer_id != $this->did) {
+            return new Model_Game();
+        }
+
+        return $game;
+    }
+
+    /*
+    */
+    public function find_game_by_id($game_id)
+    {
+        $game = new Model_Game($game_id);
+
+        if($this->is_admin()) {
+            return $game;
+        }
+
+        if($game->developer_id != $this->did) {
+            return new Model_Game();
+        }
+
+        return $game;
+    }
+
+    public function check_if_user_owns_game($game_ymc_id)
+    {
+        if($this->is_admin()){
+            return true;
+        }
+        if($this->find_game_by_ymc_id($game_ymc_id)->developer_id != $this->did){
+            return false;
+        }
+    }
+
+    /*
+    */
+    public function find_file_by_id($file_id)
+    {
+        $file = new Model_File($file_id);
+
+        if($this->is_admin()) {
+            return $file;
+        }
+
+        if($file->game->developer_id != $this->did) {
+            return new Model_File();
+        }
+
+        return $file;
+    }
+
+
+    /*
+    */
+    public function admin_games()
+    {
+        $info_params = array(
+            'uid' => $this->uid,
+            'token' => $this->access_token,
+        );
+
+        $YMC_api_response = YMC_API::AdminGames($info_params);
+
+        $status = Arr::get($YMC_api_response, 'status', 0);
+        $response = Arr::get($YMC_api_response, 'response');
+
+        return $YMC_api_response;
+    }
+
+    /*
+    */
+    public function logout()
+    {
+        $this->credentials = array();
+        Session::instance()->delete('session');
+
+        /* TODO: Actually log the user out?
+        $info_params = array(
+            'uid' => $this->uid,
+            'token' => $this->access_token,
+        );
+
+        $YMC_api_response = YMC_API::UserLogout($info_params);
+
+        return $YMC_api_response;
+        */
+    }
+
+    /*
+    */
+    public function log_developer($verified=false)
+    {
+        $user_developer = Model_UserDeveloper::find_by_email($this->email);
+
+
+            $values = array(
+                'developer_id' => $this->did,
+                'uid' => $this->uid,
+                'username' => $this->username,
+                'name' => $this->name,
+                'email' => $this->email,
+            );
+        if( ! $user_developer->loaded()) {
+            $user_developer = Model_UserDeveloper::build($values);
+        }else
+        {
+            $user_developer->values($values);
+        }
+
+        $user_developer->last_login = date('c');
+
+        if($verified) {
+            $user_developer->verified_at = date('c');
+        }
+
+        $user_developer->save();
+
+        return  $user_developer;
+    }
+
+    /*
+    */
+    public function get_credentials()
+    {
+        return $this->credentials;
+    }
+
+
+    /*
+    */
+    public function is_logged_in()
+    {
+        $logged_in = ( ! empty($this->credentials));
+        return $logged_in;
+    }
+
+    /*
+    */
+    public function set_developer_updated()
+    {
+        $this->developer_updated = TRUE;
+        $this->save();
+    }
+
+    /*
+    */
+    public function is_developer_updated()
+    {
+        return $this->developer_updated;
+    }
+
+    /*
+    */
+    public function validate_signup($values, $ignore_password=false)
+    {
+        $email = Arr::get($values, 'email');
+        $username = Arr::get($values, 'username');
+
+        $password = Arr::get($values, 'password');
+        $verify_password = Arr::get($values, 'verify_password');
+
+        $developer_name = Arr::get($values, 'developer_name');
+
+        if( ! $ignore_password) {
+            if($password != $verify_password){
+                $this->_errors[] = __("Your passwords do not match");
+            }
+            if(empty($password)){
+                $this->_errors[]  = __("Please provide a valid password");
+            }
+        }
+
+        if(empty($developer_name)){
+            $this->_errors[]  = __("Please provide a developer name");
+        }
+
+        if(empty($username)){
+            $this->_errors[]  = __("Please provide a user name");
+        }
+
+        if( ! Valid::email($email)) {
+            $this->_errors[]  = __("Please provide a valid email address");
+        }
+
+        return $this->_errors;
+    }
+
+    /**/
+    public function add_error($error)
+    {
+        $this->_errors[] = $error;
+    }
+
+
+
+    /*
+    */
+    public function __get($var)
+    {
+
+        if (!array_key_exists($var, $this->credentials)) {
+
+          //this attribute is not defined!
+          //return $this->$var;
+            return;
+
+        }
+
+        return $this->credentials[$var];
+    }
+
+    /*
+    */
+    public function __set($var,$value)
+    {
+      $this->credentials[$var] = $value;
+    }
+
+    public function get_associate_database_record()
+    {
+        if(!isset($database_representative))
+            $database_representative = ORM::factory('UserDeveloper')->where('uid','=',$this->uid)->find();
+        return $database_representative;
+    }
+
+}

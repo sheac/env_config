@@ -1,0 +1,70 @@
+from ymc.model import User
+from ymc.lib.authentication import Sign
+
+u = User.objects.filter(is_guest=True)[0]
+h = dict(
+    uid = u.id,
+    access_token = u.access_token,
+    email = str(u.id)+'@example.com',
+    password = 'changeme',
+    gid = 'b8b73492dac311e284c212313b0ace15',
+)
+_sig = Sign(h)
+
+cmd = "curl -X POST https://apistage.ymcgames.com/api/users/guests/register --data '"
+cmd += "uid="+str(h['uid'])+"&"
+cmd += "access_token="+h['access_token']+"&"
+cmd += "email="+h['email']+"&"
+cmd += "_sig="+_sig+"&"
+cmd += "gid="+h['gid']+"&"
+cmd += "password="+h['password']
+cmd +="'"
+
+=================================
+=================================
+
+from ymc.model import User
+from ymc.lib.authentication import Sign
+
+u = User.objects.filter(is_guest=True)[0]
+h = dict(
+    uid = u.id,
+    access_token = u.access_token,
+    fbid = 21006230,
+    fbtok = "CAAGVxowIqp4BAImFaze7yeIV7i4ZCBc3XTXOQHEoLEF7WoQqM4H17Wdgnannn1ZBXXjHyZATnViZCANwthkAVDDtUBv5PR2wzduvoOV8ykVeXmnysRi6J6AWLrSVAsoidXRU8LIvMzKIJEzAcWbsuTrjvdhv4WJSxB4tnrfxqouMWfqVguXsthzi4U6lWhdOjmHEmIs0dqQVshbK3dlShNKZCglk3BLEZD",
+    gid = 'b8b73492dac311e284c212313b0ace15',
+)
+_sig = Sign(h)
+
+cmd = "curl -X POST https://apistage.ymcgames.com/api/users/guests/login --data '"
+cmd += "uid="+str(h['uid'])+"&"
+cmd += "access_token="+h['access_token']+"&"
+cmd += "gid="+h['gid']+"&"
+cmd += "fbid="+str(h['fbid'])+"&"
+cmd += "fbtok="+h['fbtok']+"&"
+cmd += "_sig="+_sig+"&"
+cmd +="'"
+
+=================================
+=================================
+
+from ymc.model import User
+from ymc.lib.authentication import Sign
+
+u = User.objects.get(id=370)
+h = dict(
+    uid = u.id,
+    access_token = u.access_token,
+    fbid = 100003855788662,
+    fbtok = "CAACHgXDv4gsBAJOnVfXSBOWooUrsecDcACuYC4IAEWq63S7s3GVZAxF1KfIY4Tq3O3gBMBWvaOBcjQNFIMDQBR4ZAxoOtIpp1ZAPkoRZBNZCJmWgu33UiS4Kzq7yZAiqZCyhqFMv5gXLGs5N4FAIExcRzKgnZCk9JuV722pJNRUhtn7yw7d1gCYLClC3e8A1yZC87smfqCQPH8TZBcVQ9gZBy1rZCavYEOhBPH8ZD",
+    gid = '0cea0618006511e384c212313b0ace15',
+)
+_sig = Sign(h)
+
+cmd = "curl -X POST https://api.ymcgames.com/api/users/login --data '"
+cmd += "gid="+h['gid']+"&"
+cmd += "fbid="+str(h['fbid'])+"&"
+cmd += "fbtok="+h['fbtok']+"&"
+cmd += "_sig="+_sig+"&"
+cmd +="'"
+

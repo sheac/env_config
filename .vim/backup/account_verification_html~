@@ -1,0 +1,16 @@
+<h2>Welcome {{user.username}},</h2>
+<p>
+You have requested to reset your YMC Games password.
+In order to complete your registration, we need to verify that your<br/>
+email address is correct.
+<br/><br/>
+To do so, please visit the following link:
+</p>
+
+<a href='{{user_verify_account_link}}'>{{user_verify_account_link}}</a>
+<br/><br/>
+<p>
+Thank you,
+<br/><br/>
+- YMC Games
+</p>

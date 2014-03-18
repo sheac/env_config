@@ -1,0 +1,27 @@
+var database = require('../database');
+var collectionSDKDebug = database.sdkDebugCollection;
+var utime = require('../lib/utime').getTimePoint
+var fillGap = require('../lib/utime').fillGap
+
+exports.api = function(req,res){
+
+    var ymc_id              = req.query.token,
+        limit               = req.query.limit;
+
+    var query_criteria = {
+            "properties.YA0token": ymc_id,
+        };
+
+    var query_options = {
+        sort: [["properties.time", -1]],
+            limit: limit,
+        };
+
+    collectionSDKDebug.find(
+        query_criteria,
+        query_options,
+        function(err,result){
+            result.reverse(); // the DB query is reverse-chrono order
+            res.send(result);
+        });
+};

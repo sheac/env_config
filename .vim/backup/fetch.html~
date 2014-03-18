@@ -1,0 +1,31 @@
+{% load static %}
+{% load menu_items %}
+{% get_static_prefix as STATIC_PREFIX %}
+<html>
+    <link href='http://fonts.googleapis.com/css?family=Maven+Pro' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="{{ STATIC_PREFIX }}css/main.css" />
+</html>
+
+<body class="emaillist-fetch-page">
+    <div class='emaillist-fetch-container'>
+        {% if errors %}
+            <div class="errors">
+                {% for msg in errors %}
+                    <p class="error-msg">{{msg}}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <form action="{% email_list_fetch %}" method="post">
+            <input type="hidden" id="password" name="password" value="{{ password }}"/>
+            <div class="field-wrapper">
+                <label for="game_id">Game:</label>
+                <select name="game_id">
+                    {% for game in games %}
+                        <option value="{{ game.id }}">{{game.title}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <input type="submit" value="Download email list" class=button"/>
+        </form>
+    </div>
+</body>

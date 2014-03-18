@@ -1,0 +1,138 @@
+<?php
+
+class Model_ContactMessage extends Model_Base 
+{
+
+    protected $_table_name = 'contact_messages';
+
+    const CONTACT_MESSAGE_REASON_SELECT_ONE     = "";
+    const CONTACT_MESSAGE_REASON_GAME_STATUS    = "GAME_STATUS";
+    const CONTACT_MESSAGE_REASON_GAME_SUBMIT    = "GAME_SUBMIT";
+    const CONTACT_MESSAGE_REASON_B_2_B          = "B_2_B";
+    const CONTACT_MESSAGE_REASON_SITE_BUG       = "SITE_BUG";
+    const CONTACT_MESSAGE_REASON_OTHER          = "OTHER";
+
+    /*
+    */
+    public static function build($values)
+    {
+        $contact_msg = new Model_ContactMessage();
+        $contact_msg->values($values);
+
+        return $contact_msg;
+    }
+
+
+    /*
+    */
+    protected $_labels = array(
+        'name'      => 'Name',
+        'email'     => 'Email Address',
+        'subject'   => 'Subject',
+        'reason'    => 'Reason',
+        'message'   => 'Message',
+    );
+
+    /*
+    */
+    protected $_belongs_to = array(
+    );
+
+    /*
+    */
+    protected $_has_many = array(
+    );
+
+    /*
+    */
+    protected $_has_one = array(
+    );
+
+    /*
+    */
+    public function rules()
+    {
+        return array(
+            'name'      => array(
+                array('not_empty'),
+                array('max_length',
+                    array(':value', 255),
+                ),
+            ),
+            'email'     => array(
+                array('not_empty'),
+                array('email'),
+            ),
+            'subject'   => array(
+                array('not_empty'),
+                array('max_length',
+                    array(':value', 255),
+                ),
+            ),
+            'reason'    => array(
+                array('not_empty'),
+                array(array($this, 'validate_reason_in_enum')), // TODO: custom error message for this
+            ),
+            'message'   => array(
+                array('not_empty'),
+                array('max_length',
+                    array(':value', 1023),
+                ),
+            ),
+        );
+    }
+
+
+    /*
+    */
+    public function validate_reason_in_enum($value)
+    {
+        return in_array(
+            $this->reason,
+            array(
+                self::CONTACT_MESSAGE_REASON_GAME_STATUS,
+                self::CONTACT_MESSAGE_REASON_GAME_SUBMIT,
+                self::CONTACT_MESSAGE_REASON_B_2_B,
+                self::CONTACT_MESSAGE_REASON_SITE_BUG,
+                self::CONTACT_MESSAGE_REASON_OTHER,
+            )
+        );
+    }
+
+    /*
+    */
+    public static function get_reason_options()
+    {
+           return array(
+           self::CONTACT_MESSAGE_REASON_SELECT_ONE     => 'Please select one',
+           self::CONTACT_MESSAGE_REASON_GAME_STATUS    => 'Checking on game status',
+           self::CONTACT_MESSAGE_REASON_GAME_SUBMIT    => 'Wishing to submit a game',
+           self::CONTACT_MESSAGE_REASON_B_2_B          => 'Business-to-business contact', 
+           self::CONTACT_MESSAGE_REASON_SITE_BUG       => 'Report site bug',
+           self::CONTACT_MESSAGE_REASON_OTHER          => 'Other',
+        );
+    }
+
+    /*
+    */
+    public function send_notification_email()
+    {
+        var_dump($this->name);
+        var_dump($this->email);
+        var_dump($this->message);
+        ContactUsEmailer::send_notification($this);
+    }
+
+    /*
+    */
+    protected $_callbacks = array(
+
+    );
+
+    /*
+    */
+    protected $_filters = array(
+        true => array('trim' => null),
+    );
+
+}

@@ -1,0 +1,29 @@
+<?php defined('SYSPATH') or die('No direct script access.');
+
+class Controller_Contacts extends Controller_Base {
+
+    /*
+    */
+    public function action_new()
+    {
+        $contact_msg = new Model_ContactMessage();
+
+        if ($this->request->method() == HTTP_Request::POST) {
+
+            $contact_msg = Model_ContactMessage::build($_POST);
+
+            if (!$contact_msg->check()) {
+                $contact_msg->save();
+                HTTP::redirect(Path::base_url());
+            }
+        }
+
+        $content = View::factory('contact')
+                        ->set('contact_msg', $contact_msg);
+
+        $response = View::factory('layout/visitor')
+                        ->set('content', $content);
+
+        $this->response->body($response);
+    }
+}

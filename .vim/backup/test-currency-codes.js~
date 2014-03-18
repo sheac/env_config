@@ -1,0 +1,70 @@
+var applesCodes = [
+    "USD",
+    "CAD",
+    "MXN",
+    "AUD",
+    "NZD",
+    "JPY",
+    "Euro",
+    "CHF",
+    "NOK",
+    "GBP",
+    "DKK",
+    "SEK",
+    "CNY",
+    "SGD",
+    "HKD",
+    "TWD",
+    "RUB",
+    "TRY",
+    "INR",
+    "IDR",
+    "ILS",
+    "ZAR",
+    "SAR",
+    "AED",
+    "EUR",
+]
+
+var cc = require('./curr-convert');
+var db = require('../../reporter/database').db;
+cc.initialize(doEverything);
+
+function grabDistinctCodes(callback) {
+    db.collection('events').distinct(
+            'properties.currency',
+            {event: {$in: ['YA0charge', 'YA0charge_X']}},
+            callback
+        );
+}
+
+function tryAllCodes(codes, callback) {
+    for (var i = 0; i < codes.length; i++) {
+        try {
+            cc.toUSDRevenue(10, codes[i]);
+        } catch (err) {
+            console.error("couldn't use code: '" + codes[i] + "'");
+        }
+    }
+    callback();
+}
+
+function doEverything(err) {
+    if (err) {
+        throw err;
+    }
+
+
+    tryAllCodes(applesCodes, function() {
+        console.log("finished testing Apple's codes");
+    });
+
+    grabDistinctCodes(function(err, foundCodes) {
+        if (err) {throw err;}
+        tryAllCodes(foundCodes, function() {
+            console.log('done');
+            process.exit(0);
+        });
+    });
+}
+

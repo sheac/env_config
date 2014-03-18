@@ -1,0 +1,35 @@
+<!-- main.html -->
+    <div class="span9" cg-busy="'pizza'">
+        <div class="well" ui-view="viewChart">
+
+            <!-- first_launches.html -->
+                <div ng-controller='firstLaunchesController'>
+                    <ng-include src="'./view/dashboards/templates/mono_template.html'">
+                        <!-- mono_template.html -->
+
+                            <h4>
+                                <!-- chart name, description and buttons -->
+                            </h4>
+
+                            <div>
+                                <span>{{language+'.charts.chart_text.timezone_used' | translate}}</span>
+                                <span>{{language+'.'+timezone.toLowerCase() | translate}}</span>
+                            </div>
+
+                            <div id="myChart">
+                                <svg style="height:400px"></svg>
+                            </div>
+
+                            <div>
+                                <table class="table table-striped">
+                                </table>
+                            </div>
+
+                        <!-- mono_template.html -->
+                    </ng-include>
+                </div>
+            <!-- first_launches.html -->
+
+        </div>
+    </div>
+<!-- main.html -->

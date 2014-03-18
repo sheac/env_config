@@ -1,0 +1,350 @@
+"""
+*
+"""
+import os, uuid, hashlib, datetime, json, pprint, time
+
+from django.http import HttpResponse, HttpResponseRedirect
+from django.utils.timezone import utc
+from django.core.exceptions import ValidationError, NON_FIELD_ERRORS
+from django.forms.models import model_to_dict
+
+from ymc.model.users import User
+from ymc.model.games import Game
+from ymc.model.developers import Developer
+from ymc.model.publishers import Publisher
+from ymc.model.permissionsgroups import PermissionsGroup
+
+from ymc.lib import authentication as ApiAuthentication
+
+from ymc.lib.authentication import requires_signature, requires_admin
+
+from api import response as ApiResponse
+
+"""
+"""
+@requires_signature
+def register(request, group_type):
+
+    group_class = PermissionsGroup.GetSubclass(group_type)
+    if (not group_class):
+         return HttpResponse(ApiResponse.Error(None, "Unknown group_type"))
+
+    if(request.method != 'POST'):
+         return HttpResponse(ApiResponse.Error(None, "Unknown error"))
+
+    email =request.POST.get('email')
+    username =request.POST.get('username')
+    password =request.POST.get('password')
+    group_name = request.POST.get(group_type + '_name')
+    register_as_group = request.POST.get('register_as_' + group_type)
+    game_id = request.POST.get('gid')
+
+    api_response = dict(
+        username=username,
+        email=email,
+    )
+    api_response[group_type] = group_name
+
+    # Try to find user either by username or by email
+    user = User.findByEmail(email)
+
+    # This user already exists, are they already a member of a permissions group?
+    if (user):
+        result = ApiAuthentication.Validate(user, password)
+        if( not result):
+            return HttpResponse(ApiResponse.Error(api_response, "Failed to authenticate"))
+        elif( not register_as_group):
+            return HttpResponse(ApiResponse.Error(api_response, "User Already Exists"))
+        elif(group_class.FindByUser(user)):
+            return HttpResponse(ApiResponse.Error(api_response, "User Already " + group_class.__name__))
+
+    else:
+
+        # Create new User
+        values = dict(
+            username=username,
+            password=password,
+            first_name=request.POST.get('first_name'),
+            last_name=request.POST.get('last_name'),
+            email=email,
+            ip_address=request.META.get('REMOTE_ADDR'),
+            is_admin=False,
+        )
+
+        user = User.Build(values)
+
+    group = group_class.FindByName(group_name)
+    if( not group):
+        # print("CREATING GROUP... "+str(group_name))
+        values = dict(
+            name=group_name,
+        )
+        group = group_class.Build(values)
+
+         # Validate User
+        try:
+            group.full_clean()
+        except ValidationError as e:
+            api_response['errors'] = e.message_dict
+            return HttpResponse(ApiResponse.Error(api_response, "Failed to register " + group_type))
+        group.save()
+        # print("SAVING NEW GROUP\n")
+
+
+    group.assign_self_to_model(user)
+
+    response = dict()
+    result = user.ValidateAndLogin(game_id, response)
+    if( not result):
+        api_response['errors'] = response.get('errors')
+        return HttpResponse(ApiResponse.Error(api_response, response.get('message')))
+
+    games = Game.GetGamesInfo(group)
+
+    # Return access token
+    api_response = dict(
+        access_token=user.access_token,
+        uid=user.id,
+        expires=user.access_token_expiry,
+        games=games,
+    )
+    api_response[group_class.ShortForeignKeyIdentifier()] = group.id
+
+    return HttpResponse(ApiResponse.Success(api_response))
+
+
+"""
+"""
+@requires_signature
+def login(request, group_type):
+
+    group_class = PermissionsGroup.GetSubclass(group_type)
+    if (not group_class):
+         return HttpResponse(ApiResponse.Error(None, "Unknown group_type"))
+
+    if(request.method != 'POST'):
+         return HttpResponse(ApiResponse.Error(None, "Unknown error"))
+
+    email =request.POST.get('email')
+    username =request.POST.get('username')
+    password =request.POST.get('password')
+    game_id = request.POST.get('gid')
+
+    api_response = dict(
+        username=username,
+        email=email,
+    )
+
+    user = User.findByEmail(email=email)
+    group = group_class.FindByUser(user)
+    if(user):
+        result = group and ApiAuthentication.ValidateGroup(user, password, group)
+        if(not result):
+            return HttpResponse(ApiResponse.Error(api_response, "Failed to authenticate " + group_type))
+
+    # If no user found... return error
+    if(not user):
+        return HttpResponse(ApiResponse.Error(api_response, "Failed to authenticate " + group_type))
+
+    if(not user.IsTokenValid()):
+        user.CreateAccessToken()
+    user.login()
+
+    if(user.loginGame(game_id) == False):
+        return HttpResponse(ApiResponse.Error(api_response, "Failed to login to game"))
+
+    games = Game.GetGamesInfo(group)
+
+    # Return access token
+    api_response = dict(
+        access_token	= user.access_token,
+        uid	            = user.id,
+        expires	        = user.access_token_expiry,
+        games	        = games,
+        email	        = user.email,
+        username	    = user.username,
+        gender	        = user.gender,
+        first_name      = user.first_name,
+        last_name       = user.last_name,
+    )
+    if (user.developer_id): api_response['did']         = user.developer_id
+    if (user.publisher_id): api_response['pid']         = user.publisher_id
+    if (user.is_admin):     api_response['is_admin']    = user.is_admin
+
+    return HttpResponse(ApiResponse.Success(api_response))
+
+
+"""
+"""
+def games(request, group_id, group_type):
+
+    # TODO make this action validate that the user actually belongs to the
+    #   id supplied by the group!!
+
+    user = ApiAuthentication.Authenticate(request.REQUEST)
+
+    if( not user):
+        return  HttpResponse(ApiResponse.Error(None, "Failed to authenticate " + group_type))
+
+    group_class = PermissionsGroup.GetSubclass(group_type)
+    if (not group_class):
+         return HttpResponse(ApiResponse.Error(None, "Unknown group_type"))
+
+    group = group_class.objects.filter(id=group_id)[:1]
+    if (not group.exists() or group_class.FindByUser(user) != group[0]):
+        return  HttpResponse(ApiResponse.Error(None, "Incorrect " + group_type + " id"))
+    else:
+        group = group[0]
+
+    games = Game.GetGamesInfo(group)
+
+    api_response = dict(
+        games=games,
+    )
+    api_response[group_type] = model_to_dict(group)
+
+    #print(api_response)
+
+    return ApiResponse.Success(api_response)
+
+"""
+"""
+@requires_signature
+def games_new(request, group_id, group_type):
+
+    # TODO make this action validate that the user actually belongs to the
+    #   id supplied by the group!!
+
+    title = request.REQUEST.get('title')
+    platform = request.REQUEST.get('platform')
+
+    user = ApiAuthentication.Authenticate(request.REQUEST)
+
+    if( not user):
+        return  HttpResponse(ApiResponse.Error(None, "Failed to authenticate " + group_type))
+
+    group_class = PermissionsGroup.GetSubclass(group_type)
+    if (not group_class):
+         return HttpResponse(ApiResponse.Error(None, "Unknown group_type"))
+
+    group = group_class.objects.filter(id=group_id)[:1]
+    if (not group.exists() or group_class.FindByUser(user) != group[0]):
+        return  HttpResponse(ApiResponse.Error(None, "Incorrect " + group_type + " id"))
+
+    values = dict(
+        title=title,
+        platform=platform,
+    )
+    values[group_class.ForeignKeyIdentifier()] = group_id
+
+    game = Game.Build(values)
+
+    api_response = dict(
+        game = model_to_dict(game)
+    )
+
+     # Validate User
+    try:
+        game.full_clean()
+    except ValidationError as e:
+        api_response['errors'] = e.message_dict
+        return HttpResponse(ApiResponse.Error(api_response, "Failed to add game"))
+
+    game.save()
+    api_response['game'] = model_to_dict(game)
+
+    return ApiResponse.Success(api_response)
+
+
+"""
+"""
+def logout(request):
+    pass
+
+"""
+"""
+def show(request, username):
+    pass
+
+"""
+"""
+def ping(request, uid):
+    pass
+
+@requires_admin
+def uids(request, group_type, group_id=None):
+
+    group_class = PermissionsGroup.GetSubclass(group_type)
+    if (not group_class):
+         return HttpResponse(ApiResponse.Error(None, "Unknown group_type"))
+
+    if (group_id):
+        groups = group_class.objects.filter(id=group_id)
+    else:
+        groups = group_class.objects.all()
+
+    group_id_2_uids = {}
+    for group in groups:
+        uids = []
+        assoc_users = User.FindAllByGroup(group)
+        for user in assoc_users:
+            uids.append(user.id)
+        group_id_2_uids[str(group.id)] = uids
+
+    return HttpResponse(ApiResponse.Success(group_id_2_uids))
+
+@requires_admin
+def index(request, group_type):
+
+    group_class = PermissionsGroup.GetSubclass(group_type)
+    if (not group_class):
+         return HttpResponse(ApiResponse.Error(None, "Unknown group_type"))
+
+    groups = group_class.objects.all()
+    group_data = [{'id': group.id, 'name': group.name} for group in groups]
+
+    return HttpResponse(ApiResponse.Success(group_data))
+
+def show(request, group_id, group_type):
+
+    user = ApiAuthentication.Authenticate(request.REQUEST)
+    if (not user):
+        return  HttpResponse(ApiResponse.Error(None, "Failed to authenticate " + group_type))
+
+    group_class = PermissionsGroup.GetSubclass(group_type)
+    if (not group_class):
+         return HttpResponse(ApiResponse.Error(None, "Unknown group_type"))
+
+    group_query = group_class.objects.filter(id=group_id)
+    if (not group_query.exists()):
+         return HttpResponse(ApiResponse.Error(None, "Group not found"))
+    group = group_query[0]
+
+    if (not (group_class.GetOwnInstanceFromModel(user) and group.id == group_class.GetOwnInstanceFromModel(user).id)):
+         return HttpResponse(ApiResponse.Error(None, "Access denied"))
+
+    return HttpResponse(ApiResponse.Success(model_to_dict(group)))
+
+@requires_admin
+def delete(request, group_type, group_id):
+
+    user = ApiAuthentication.Authenticate(request.REQUEST)
+    if (not user):
+        return  HttpResponse(ApiResponse.Error(None, "Failed to authenticate " + group_type))
+
+    group_class = PermissionsGroup.GetSubclass(group_type)
+    if (not group_class):
+         return HttpResponse(ApiResponse.Error(None, "Unknown group_type"))
+    qs = group_class.objects.filter(id=group_id)
+    if (not qs.exists()):
+        return  HttpResponse(ApiResponse.Error(None, "Incorrect " + group_type + " id"))
+    group = qs[0]
+
+    success_resp = {group_type: model_to_dict(group)}
+    group.delete()
+
+    qs = group.__class__.objects.filter(id=group.id)
+    if (qs.exists()):
+        return HttpResponse(ApiResponse.Error(None, "Error while attempting to delete " + group_type))
+    else:
+        return HttpResponse(ApiResponse.Success(success_resp))

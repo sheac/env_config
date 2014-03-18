@@ -1,0 +1,156 @@
+
+var request = require('request');
+var Hashes = require('jshashes');
+var SHA256 =  new Hashes.SHA256;
+var api_token;
+
+var auth_host = 'https://api.ymcgames.com/api/';
+//var auth_host = 'http://192.168.1.53:6060/api/'; // shea's dev machine
+
+var https = require('https');
+
+exports.login = function(req,res) {
+    var user = req.body.user,
+        pass = req.body.pass;
+    var uri = auth_host+'developers/login';
+
+    // for new version api
+    var gid =  '8923e99cfa3911e284c212313b0ace15' // api.ymcgames.com/admin/ for YMC Analytics
+//    var sigSHA = SHA256.hex(gid+pass+user);
+
+    var email = user;
+    var sigSHA = SHA256.hex(email+gid+pass+user);
+
+    ymcaLogger.log('user: %s pass: %s  SHA: %s',user,pass,sigSHA);
+
+    //Use https to find the DEPTH_ZERO_SELF_SIGNED_CERT error, avoid it by NODE_TLS_REJECT_UNAUTHORIZED
+//    testHttps()
+
+    request.post(uri,{form:{username:user,email:email,password:pass,gid:gid,_sig:sigSHA}},function(err,res_api,body){
+        ymcaLogger.log("\n\nres:\n",body);
+        var result = JSON.parse(res_api.body);
+        ymcaLogger.log(result);
+
+        if (result.status==1) {
+            api_token = result.response.access_token;
+            delete result.response.access_token;
+
+            req.session.user = user;
+
+            // TODO: separate authentication and get games list
+            res.json(result);
+        } else {
+            res.json(result);
+        }
+
+    });
+
+
+}
+
+exports.verifyUser = function(req,res){
+    var did = req.body.did; // developer id
+    var gid = req.body.gid;
+    var uid = req.body.uid;
+    var token = req.body.token;
+    var is_admin = req.body.is_admin;
+
+    ymcaLogger.log('|req verify|',did,gid,uid,is_admin);
+
+
+    if (gid) {
+        if (uid) {
+            if (token){
+
+                var gamesURL = (is_admin == 1) ?
+                        auth_host+'admin/games/' :
+                        auth_host+'developers/games/'+did;
+                var sigSHA = SHA256.hex(token+uid);
+                request.post(gamesURL,{form:{token:token,uid:uid,_sig:sigSHA}},function(err,res_api,body){
+
+                    body = JSON.parse(body);
+                    ymcaLogger.log('|sign.verifyUser| got res from api server:\n',body);
+
+                    if (err) {
+                        ymcaLogger.log(err);
+                        return res.json(500,{ok:0});
+                    }
+
+                    if (body.status==0){
+                        return res.json(500,{ok:0,message:body.message});
+                    }
+
+                    req.session.user = uid;
+
+                    var gameList = body.response.games;
+                    var found_game = null;
+
+                    if (is_admin == 1) {
+                        for (var ymc_id in gameList) {
+                            if (gid==ymc_id) {
+                                found_game = gameList[ymc_id];
+                                break;
+                            }
+                        }
+                    } else {
+                        gameList.forEach(function(game){
+                            if (gid==game.ymc_id) {
+                                found_game = game;
+                                return;
+                            }
+                        });
+                    }
+
+                    if (found_game) {
+                        ymcaLogger.log('|sign.verifyUser| Found game available to this user:\n',found_game);
+                        return res.json({ok:1,game:found_game});
+                    } else {
+                        ymcaLogger.log("didn't find game");
+                        return res.json({ok:0, error: 'user not authorized to view this game'});
+                    }
+                });
+            } else {
+                return res.json({ok:0,error:'no token'});
+            }
+        } else {
+            return res.json({ok:0,error:'no uid'});
+        }
+    } else {
+        return res.json({ok:0,error:'no gid'});
+    }
+
+
+}
+
+function testHttps(){
+
+    var options = {
+//        hostname: 'encrypted.google.com',
+        hostname: 'api.ymcgames.com',
+        port: 443,
+        path: '/api/developers/login',
+//        rejectUnhauthorized : false,
+//        strictSSL: false,
+        requestCert: true,
+        method: 'GET'
+    };
+
+    var req = https.request(options, function(res) {
+        ymcaLogger.log("statusCode: ", res.statusCode);
+        ymcaLogger.log("headers: ", res.headers);
+        var body = '';
+        res.on('data', function(d) {
+//            process.stdout.write(d);
+            body += d;
+        });
+        res.on('end', function () {
+            ymcaLogger.log('test https :\n',body)
+        })
+
+    });
+    req.end();
+
+    req.on('error', function(e) {
+        ymcaLogger.error(e);
+    });
+}

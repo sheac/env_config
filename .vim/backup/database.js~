@@ -1,0 +1,50 @@
+var fs = require('fs');
+var path = require('path');
+
+// TODO: setup development,production environment.
+var config = {
+
+    development:{
+        database:'192.168.1.57:27017/ymca?slaveOk=true'
+    },
+    production:{
+        database:'mongodb0.ymcnetwork.com:27017,mongodb1.ymcnetwork.com:27017,mongodb2.ymcnetwork.com:27017/ymca?slaveOk=true'
+    }
+
+};
+
+var LEGAL_COLLECTION_NAMES = [
+    'events',
+    'users',
+    'manager',
+    'sdk_debug',
+]
+
+var startTime = new Date();
+var mongojs = require('mongojs');
+
+var file_based_config_path = path.join(path.join(__dirname, '..'), 'set_as_production.txt')
+var file_based_env_config = fs.existsSync(file_based_config_path) ? 'production' : 'development';
+
+var env = process.env.NODE_ENV || file_based_env_config || 'development';
+
+var db = mongojs(config[env]['database']);
+console.log('connect to database:',config[env]['database']);
+
+var collectionFromName = function collectionFromName(name) {
+    if (LEGAL_COLLECTION_NAMES.indexOf(name) >= 0) {
+        return db.collection(name);
+    } else {
+        return null;
+    }
+}
+
+exports.db = db;
+exports.eventCollection =  db.collection('events');
+exports.userCollection =  db.collection('users');
+exports.managerCollection = db.collection('manager');
+exports.sdkDebugCollection = db.collection('sdk_debug');
+
+exports.collectionFromName = collectionFromName;
+
+exports.dbStartTime = startTime;

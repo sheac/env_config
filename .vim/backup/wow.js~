@@ -1,0 +1,107 @@
+var moment = require('moment');
+var _ = require('underscore');
+var strftime = require('strftime');
+
+/**
+ * Date method difference !!!
+ *
+ * Mongodb:
+ *      $dayOfYear  1 ~ 366
+ *      $week       0 ~ 53
+ *      $month      1 ~ 12
+ *
+ * Moment:
+ *      dayOfYear   1 ~ 366
+ *      week        1 ~ 54
+ *      month       0 ~ 11
+ *
+ */
+
+
+exports.fillGap = function(startTime,endTime,type,data){
+
+    var startTime = moment(startTime),
+        currTime = moment(startTime),
+        endTime = moment(endTime);
+
+    var sortedSegKeys = [];
+    while (currTime < endTime) {
+        sortedSegKeys.push(currTime.unix());
+        var unitToAdd = type+'s';
+        currTime.add(unitToAdd, 1);
+    }
+
+    var sampleDataPoint = _.omit(data[0]);
+    var setToZero = function setToZero(obj, key) { obj[key] = 0; return obj; }
+    var zeroDataPoint = _.reduce(_.keys(sampleDataPoint), setToZero, {});
+
+    var addZeroPoint = function addZeroPoint(obj, key) { obj[key] = _.omit(zeroDataPoint, '_id'); return obj; }
+    var segments = _.reduce(sortedSegKeys, addZeroPoint, {});
+
+    aggrId2SegKeyTrie = {};
+    var addSegKeyToAggrId2SegKeyTrie = function addSegKeyToAggrId2SegKeyTrie(segKey) {
+        var date = moment(Number(segKey)*1000).toDate(); // segKey is a unix timestamp in string form
+
+        var y = strftime('%Y', date);
+        var yearBucket = aggrId2SegKeyTrie[y];
+        if (!yearBucket) {
+            yearBucket = {};
+            aggrId2SegKeyTrie[y] = yearBucket;
+        }
+        
+        var tStr;
+        switch (type) {
+            case 'day':
+                tStr = '%j';
+                break;
+            case 'week':
+                tStr = '%U';
+                break;
+            case 'month':
+                tStr = '%m';
+                break;
+        }
+        var t = Number(strftime(tStr, date));
+        yearBucket[t] = Number(segKey);
+    }
+    _.each(_.keys(segments), addSegKeyToAggrId2SegKeyTrie);
+
+    var findSegFromAggrId = function findSegFromAggrId(_id) {
+        var segKey = aggrId2SegKeyTrie[_id.y][_id.t];
+
+        if (!segKey) {
+            var t, y = _id.y;
+            console.log(1.5);
+            var sortedTsForSameYear = _.map(_.keys(aggrId2SegKeyTrie[_id.y]), Number).sort();
+
+            var nextTIndex = sortedTsForSameYear.indexOf(_id.t) + 1;
+            if (nextTIndex < sortedTsForSameYear.length) {
+                t = sortedTsForSameYear[nextTIndex];
+            } else {
+                y = _id.y+1;
+                var sortedTsForNextYear = _.map(_.keys(aggrId2SegKeyTrie[y]), Number).sort();
+                t = _.first(sortedTsForNextYear);
+            }  
+            segKey = aggrId2SegKeyTrie[y][t];
+        }
+
+        return segments[segKey];
+    }
+
+    var addDatumToSegment = function addDatumToSegment(datum) {
+        var segment = findSegFromAggrId(datum._id);
+        _.each(_.without(_.keys(datum), '_id'), function(key) {
+            segment[key] += datum[key];
+        });
+    }
+    _.each(data, addDatumToSegment);
+
+    var pushTimestampIntoData = function pushTimestampIntoData(segKey) {
+        var seg = segments[segKey];
+        seg.ts = Number(segKey);
+        return seg;
+    }
+    var dataAndTimestamps = _.map(_.keys(segments), pushTimestampIntoData);
+
+    return dataAndTimestamps
+}

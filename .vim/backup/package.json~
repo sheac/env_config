@@ -1,0 +1,63 @@
+{
+  "name": "thoughtsom",
+  "description": "Thought Collector",
+  "version": "0.0.1",
+  "homepage": "",
+  "author": {
+    "name": "zach pratt",
+    "email": "zach@attackofzach.com",
+    "url": "http://attackofzach.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/zpratt/thoughtsom.git"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "/blob/master/LICENSE-MIT"
+    }
+  ],
+  "main": "src/server/index.js",
+  "engines": {
+    "node": "0.10.x"
+  },
+  "scripts": {
+    "test": "grunt test"
+  },
+  "devDependencies": {
+    "grunt-contrib-jshint": "latest",
+    "grunt-contrib-watch": "latest",
+    "karma-script-launcher": "latest",
+    "karma-chrome-launcher": "latest",
+    "requirejs": "latest",
+    "karma-requirejs": "latest",
+    "karma-phantomjs-launcher": "latest",
+    "karma": "latest",
+    "mocha": "latest",
+    "karma-mocha": "latest",
+    "karma-chai": "latest",
+    "karma-sinon": "latest",
+    "grunt": "latest",
+    "grunt-karma": "latest",
+    "grunt-mocha-cov": "latest",
+    "chai": "latest",
+    "supertest": "latest",
+    "sinon": "latest",
+    "config": "latest",
+    "yadda": "latest",
+    "karma-browserifast": "latest",
+    "nodemon": "latest",
+    "grunt-nodemon": "latest",
+    "casual": "latest",
+    "proxyquire": "latest",
+    "coveralls": "latest",
+    "grunt-docco": "latest",
+    "browserify": "latest"
+  },
+  "dependencies": {
+    "mongoose": "latest",
+    "lodash": "latest",
+    "express": "latest"
+  }
+}

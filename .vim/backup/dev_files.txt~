@@ -1,0 +1,230 @@
+api/urls.py:29:    url(r'^developers/login/?', 'api.views.developers.login'),
+api/urls.py:30:    url(r'^developers/register/?', 'api.views.developers.register'),
+api/urls.py:31:    url(r'^developers/games/(\d+)/?', 'api.views.developers.games'),
+api/urls.py:32:    url(r'^developers/games/new/(\d+)/?', 'api.views.developers.games_new'),
+api/urls.py:33:    url(r'^developers/(\d+)/games/(\d+)/delete/?', 'api.views.developers.games_delete'),
+
+api/views/developers.py:13:from ymc.model.developers import Developer
+api/views/developers.py:32:    developer_name = request.POST.get('developer_name')
+api/views/developers.py:33:    register_as_developer = request.POST.get('register_as_developer')
+api/views/developers.py:39:        developer=developer_name,
+api/views/developers.py:45:    # This user already exists, are they already a developer?
+api/views/developers.py:50:        elif( not register_as_developer):
+api/views/developers.py:52:        elif(user.developer_id):
+api/views/developers.py:70:    developer = Developer.findByName(developer_name)
+api/views/developers.py:71:    if( not developer):
+api/views/developers.py:72:        # print("CREATING DEVELOPER... "+str(developer_name))
+api/views/developers.py:74:            name=developer_name,
+api/views/developers.py:76:        developer = Developer.Build(values)
+api/views/developers.py:80:            developer.full_clean()
+api/views/developers.py:83:            return HttpResponse(ApiResponse.Error(api_response, "Failed to register developer"))
+api/views/developers.py:85:        developer.save()
+api/views/developers.py:89:    user.developer = developer
+api/views/developers.py:97:    games = Game.GetGamesInfo(user.developer_id)
+api/views/developers.py:105:        did=user.developer_id,
+api/views/developers.py:133:            return HttpResponse(ApiResponse.Error(api_response, "Failed to authenticate developer"))
+api/views/developers.py:137:        return HttpResponse(ApiResponse.Error(api_response, "Failed to authenticate developer"))
+api/views/developers.py:147:    games = Game.GetGamesInfo(user.developer_id)
+api/views/developers.py:155:        did=user.developer_id,
+api/views/developers.py:168:        return  HttpResponse(ApiResponse.Error(None, "Failed to authenticate developer"))
+api/views/developers.py:170:    developer = Developer.objects.filter(id=did)[:1]
+api/views/developers.py:172:    if(developer.exists()):
+api/views/developers.py:173:        developer = model_to_dict(developer[0])
+api/views/developers.py:178:        developer=developer,
+api/views/developers.py:197:        return  HttpResponse(ApiResponse.Error(None, "Failed to authenticate developer"))
+api/views/developers.py:199:    developer = Developer.objects.filter(id=did)[:1]
+api/views/developers.py:201:    if( not developer.exists()):
+api/views/developers.py:202:        return  HttpResponse(ApiResponse.Error(None, "User is not a developer"))
+api/views/developers.py:207:        developer_id=did,
+api/views/developers.py:239:        return  HttpResponse(ApiResponse.Error(None, "Failed to authenticate developer"))
+api/views/developers.py:241:    developer = Developer.objects.filter(id=did)[:1]
+api/views/developers.py:243:    if( not developer.exists()):
+api/views/developers.py:244:        return  HttpResponse(ApiResponse.Error(None, "User is not a developer"))
+api/views/leaderboards.py:31:    if not user.developer_id:
+api/views/leaderboards.py:32:        return HttpResponse(ApiResponse.Error(None, "User is not a developer"))
+api/views/leaderboards.py:34:    # Make sure user is a developer, and a developer of the game they want to add
+api/views/leaderboards.py:51:    if game.developer_id != user.developer_id:
+api/views/leaderboards.py:52:        return HttpResponse(ApiResponse.Error(api_response, "User is not a developer of this game"))
+
+api/views/games.py:5:from ymc.model.developers import Developer
+api/views/games.py:29:        'developer',
+api/views/games.py:78:        'developer_id',
+api/views/games.py:94:    developer_response = {}
+api/views/games.py:95:    for developer in results:
+api/views/games.py:96:        developer_response.update({developer.get('id'): developer})
+api/views/games.py:100:        developers=developer_response,
+
+api/views/users.py:389:                helpers.reset_developer_password(game, user, user_game, password)
+api/views/users.py:463:        'developer_id',
+
+ymc/model/developers.py:22:        db_table = 'developers'
+ymc/model/developers.py:27:        developer = Developer(**values)
+ymc/model/developers.py:29:        developer.created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+ymc/model/developers.py:30:        developer.created_at = developer.created_at.astimezone(utc)
+ymc/model/developers.py:32:        return developer
+
+ymc/model/__init__.py:4:from developers import Developer
+
+ymc/model/games.py:31:    developer = models.ForeignKey('ymc.Developer', blank=True, null=True, default=None)
+ymc/model/games.py:64:    def GetGamesInfo(developer_id):
+ymc/model/games.py:66:        results = Game.objects.filter(developer_id=developer_id).values(
+ymc/model/games.py:69:                    "developer_id",
+
+ymc/model/users.py:62:    developer = models.ForeignKey('ymc.Developer', blank=True, null=True, default=None)
+
+ymc/tests/games_tests.py:55:        self.developer = Developer.Build(values)
+ymc/tests/games_tests.py:59:            developer_id = self.developer.id,
+ymc/tests/games_tests.py:67:            developer_id = self.developer.id,
+
+ymc/tests/authentication_tests.py:33:        'test_developer_signup',
+ymc/tests/authentication_tests.py:65:        self.developer = Developer.Build(dev_values)
+ymc/tests/authentication_tests.py:69:            developer_id = self.developer.id,
+ymc/tests/authentication_tests.py:78:            developer_id = self.developer.id,
+ymc/tests/authentication_tests.py:387:    def test_developer_signup(self):
+ymc/tests/authentication_tests.py:393:        print("Logging in a bunch of developers...")
+ymc/tests/authentication_tests.py:394:        developer_signup_data = [
+ymc/tests/authentication_tests.py:395:            {'data': {'username': 'developer_user', 'email': 'devuser1@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+ymc/tests/authentication_tests.py:396:            {'data': {'username': 'developer_user', 'email': 'devuser1@example.com', 'password': 'changeme', 'developer_name': 'Scott\'s Crazy Game Studio','gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+ymc/tests/authentication_tests.py:397:            {'data': {'username': 'developer_user', 'email': 'devuser1@example.com', 'password': 'changeme', 'developer_name': u'erere@这个游戏规则','gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+ymc/tests/authentication_tests.py:398:            {'data': {'username': 'developer_user', 'email': 'devuser2@example.com', 'password': 'changeme', 'developer_name': u'erere@这个游戏规则','gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+ymc/tests/authentication_tests.py:401:        for signup_data in developer_signup_data:
+ymc/tests/authentication_tests.py:404:            response = client.post('/api/developers/register', data=signup_data['data'], **{'wsgi.url_scheme': 'https'})
+
+ymc/tests/developer_tests.py:21:from api.views import developers as ApiDevelopersView
+ymc/tests/developer_tests.py:59:        self.developer = Developer.Build(dev_values)
+ymc/tests/developer_tests.py:60:        self.developer.save()
+ymc/tests/developer_tests.py:64:            developer_id = self.developer.id,
+ymc/tests/developer_tests.py:73:            developer_id = self.developer.id,
+ymc/tests/developer_tests.py:104:                'did'   : self.developer.id,
+ymc/tests/developer_tests.py:111:        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+ymc/tests/developer_tests.py:128:                'did'   : self.developer.id,
+ymc/tests/developer_tests.py:135:        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+ymc/tests/developer_tests.py:152:                'did'   : self.developer.id,
+ymc/tests/developer_tests.py:161:        url = '/api/developers/'+BAD_DID+'/games/'+str(req_data['gid'])+'/delete'
+ymc/tests/developer_tests.py:170:        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+ymc/tests/developer_tests.py:179:        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+ymc/tests/developer_tests.py:188:        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+ymc/tests/developer_tests.py:202:                'did'   : self.developer.id,
+ymc/tests/developer_tests.py:209:        url = '/api/developers/'+str(req_data['did'])+'/games/'+str(req_data['gid'])+'/delete'
+
+ymc/tests/__init__.py:3:from developer_tests import *
+ymc/tests/__init__.py:15:    suites.append(unittest.TestSuite(map(DeveloperTestCase, developer_tests.test_cases())))
+
+ymc/lib/helpers.py:31:def reset_developer_password(game, user, user_game, password):
+
+ymc/lib/facebook.py:22:http://developers.facebook.com/docs/api. You can download the Facebook
+ymc/lib/facebook.py:67:    See http://developers.facebook.com/docs/api for complete
+ymc/lib/facebook.py:82:    by the API at http://developers.facebook.com/docs/reference/api/.
+ymc/lib/facebook.py:86:    http://developers.facebook.com/docs/authentication/ for details.
+ymc/lib/facebook.py:128:        See http://developers.facebook.com/docs/api#publishing for all
+ymc/lib/facebook.py:134:        http://developers.facebook.com/docs/publishing/ for details
+ymc/lib/facebook.py:381:        <https://developers.facebook.com/roadmap/offline-access-removal/
+ymc/lib/facebook.py:447:    http://developers.facebook.com/docs/authentication/.
+ymc/lib/facebook.py:548:    app_id = retrieved from the developer page
+ymc/lib/facebook.py:549:    app_secret = retrieved from the developer page
+
+ymc/lib/authentication.py:200:    result = result and ((user is not None) and (user.developer_id))
+
+app/urls.py:31:    url(r'^admin/developers/?$', 'app.views.admin.developers.index'),
+app/urls.py:32:    url(r'^admin/developers/new/?$',          'app.views.admin.developers.new'),
+app/urls.py:33:    url(r'^admin/developers/(\d+)/?$',        'app.views.admin.developers.show'),
+app/urls.py:34:    url(r'^admin/developers/edit/(?P<developer_id>\d+)/?$',   'app.views.admin.developers.edit'),
+app/urls.py:35:    url(r'^admin/developers/delete/(?P<developer_id>\d+)/?$',  'app.views.admin.developers.delete'),
+app/urls.py:42:    url(r'^/?$',  'app.views.developers.home.login'),
+
+app/templates/admin/developers/new.html:8:    <form action="{% admin_developers_new %}" method="post">{% csrf_token %}
+app/templates/admin/developers/new.html:31:        <a href='{% admin_developers %}'><input type="button" value="Cancel"  class='button'/></a>
+app/templates/admin/developers/delete.html:6:        <h1>Delete {{developer.name}}?</h1>
+app/templates/admin/developers/delete.html:8:    <form action="{{ developer.id|admin_developers_delete }}" method="post">{% csrf_token %}
+app/templates/admin/developers/delete.html:12:        <a href='{% admin_developers %}'><input type="button" value="Cancel"  class='button'/></a>
+app/templates/admin/developers/index.html:12:                <a href='{% admin_developers_new %}'>
+app/templates/admin/developers/index.html:28:            {% for developer in developers %}
+app/templates/admin/developers/index.html:31:                    <td><a href='{{ developer.id|admin_developers_edit }}'>{{developer.name}}</td>
+app/templates/admin/developers/index.html:32:                    <td>{{developer.created_at}}</td>
+app/templates/admin/developers/index.html:33:                    <td><a href='{{ developer.id|admin_developers_delete }}'><img src="{% static 'images/delete-icon.png' %}"></img> </a> </td>
+app/templates/admin/developers/edit.html:5:        <h1>Edit {{developer.name}}</h1>
+app/templates/admin/developers/edit.html:8:    <form action="{{ developer.id|admin_developers_edit }}" method="post">{% csrf_token %}
+app/templates/admin/developers/edit.html:31:        <a href='{% admin_developers %}'><input type="button" value="Cancel"  class='button'/></a>
+
+app/templates/admin/header.html:28:                        <td><a href='{% admin_developers %}'>Developers</a></td>
+
+app/templates/admin/games/new.html:22:                    <label for="developer">{{ form.developer.label }}</label>
+app/templates/admin/games/new.html:23:                    {{ form.developer }}
+app/templates/admin/games/new.html:24:                    {{ form.developer.errors }}
+
+app/templates/admin/games/index.html:35:                    <td>{{game.developer.name}}</td>
+
+app/templates/admin/games/edit.html:22:                    <label for="developer">{{ form.developer.label }}</label>
+app/templates/admin/games/edit.html:23:                    {{ form.developer }}
+app/templates/admin/games/edit.html:24:                    {{ form.developer.errors }}
+
+app/templates/admin/users/add_game.html:25:                        <td>{{game.developer}}</td>
+
+app/templates/admin/users/show.html:38:                <span>{{ user.developer.name }}</span>
+app/templates/admin/users/show.html:97:                        <td>{{usergame.games.developer.name}}</td>
+
+app/templates/admin/users/remove_game.html:25:                        <td>{{game.developer}}</td>
+
+app/templates/admin/users/edit.html:50:                    <label for="developer">{{ form.developer.label }}</label>
+app/templates/admin/users/edit.html:51:                    {{ form.developer }}
+app/templates/admin/users/edit.html:52:                    {{ form.developer.errors }}
+
+app/templates/admin/usersgames/edit.html:20:                    <label for="developer">{{ form.user_game_id.label }}</label>
+
+app/templatetags/menu_items.py:83:def admin_developers():
+app/templatetags/menu_items.py:84:    return path.admin_developers()
+app/templatetags/menu_items.py:87:def admin_developers_new():
+app/templatetags/menu_items.py:88:    return path.admin_developers_new()
+app/templatetags/menu_items.py:91:def admin_developers_edit(developer_id):
+app/templatetags/menu_items.py:92:    return path.admin_developers_edit(developer_id)
+app/templatetags/menu_items.py:95:def admin_developers_delete(developer_id):
+app/templatetags/menu_items.py:96:    return path.admin_developers_delete(developer_id)
+app/templatetags/menu_items.py:99:def admin_developers_show(developer_id):
+app/templatetags/menu_items.py:100:    return path.admin_developers_show(developer_id)
+
+app/views/developers/home.py:74:    return render(request, 'developers/login.html', {'form': form, 'post_action': path.admin_login()})
+
+app/views/admin/developerforms.py:5:from ymc.model.developers import Developer
+
+app/views/admin/gameforms.py:6:from ymc.model.developers import Developer
+app/views/admin/gameforms.py:7:from app.views.admin.developerforms import DeveloperChoiceField
+app/views/admin/gameforms.py:19:    developer = DeveloperChoiceField(queryset = Developer.objects.filter(), required = False)
+app/views/admin/gameforms.py:47:    developer = DeveloperChoiceField(queryset = Developer.objects.all(), required = False)
+app/views/admin/userforms.py:7:from ymc.model.developers import Developer
+app/views/admin/userforms.py:8:from app.views.admin.developerforms import DeveloperChoiceField
+app/views/admin/userforms.py:19:    developer = DeveloperChoiceField(queryset = Developer.objects.filter(), required = False)
+app/views/admin/userforms.py:55:    developer = DeveloperChoiceField(queryset = Developer.objects.filter(), required = False)
+app/views/admin/userforms.py:58:        fields = ['first_name', 'last_name', 'username', 'email', 'last_login', 'joined_at', 'gender', 'is_admin', 'ip_address', 'facebook_id', 'developer']
+app/views/admin/developers.py:11:from ymc.model.developers import Developer
+app/views/admin/developers.py:14:from app.views.admin import developerforms
+app/views/admin/developers.py:25:    template_vars = {'developers': Developer.objects.all().order_by('name')}
+app/views/admin/developers.py:26:    return  render(request, 'admin/developers/index.html', template_vars)
+app/views/admin/developers.py:36:        form = developerforms.AdminNewDeveloperForm(request.POST)
+app/views/admin/developers.py:39:            return HttpResponseRedirect(path.admin_developers())        
+app/views/admin/developers.py:41:        developer_data = {
+app/views/admin/developers.py:43:        form  = developerforms.AdminNewDeveloperForm(developer_data)
+app/views/admin/developers.py:46:    return  render(request, 'admin/developers/new.html', template_vars)
+app/views/admin/developers.py:52:    template_vars = {'developers': Developer.objects.all()}
+app/views/admin/developers.py:53:    return  render(request, 'admin/developers/show.html', template_vars)
+app/views/admin/developers.py:59:def edit(request, developer_id=None):
+app/views/admin/developers.py:62:        developer = Developer.objects.get(id=developer_id)
+app/views/admin/developers.py:66:    form  = developerforms.AdminEditDeveloperForm(instance=developer)
+app/views/admin/developers.py:68:        form = developerforms.AdminEditDeveloperForm(request.POST, instance=developer)
+app/views/admin/developers.py:71:            return HttpResponseRedirect(path.admin_developers())      
+app/views/admin/developers.py:73:    template_vars = {'developer': developer,'form': form}
+app/views/admin/developers.py:74:    return  render(request, 'admin/developers/edit.html', template_vars)
+app/views/admin/developers.py:79:def delete(request, developer_id=None):
+app/views/admin/developers.py:82:        developer = Developer.objects.get(id=developer_id)
+app/views/admin/developers.py:87:        developer.delete()
+app/views/admin/developers.py:88:        return HttpResponseRedirect(path.admin_developers())      
+app/views/admin/developers.py:90:    template_vars = {'developer': developer}
+app/views/admin/developers.py:91:    return  render(request, 'admin/developers/delete.html', template_vars)
+
+app/path.py:89:def admin_developers():
+app/path.py:90:    return '/admin/developers'
+app/path.py:94:def admin_developers_new():
+app/path.py:95:    return '/admin/developers/new'
+app/path.py:99:def admin_developers_delete(developer_id):
+app/path.py:100:    return '/admin/developers/delete/'+str(developer_id)
+app/path.py:104:def admin_developers_edit(developer_id):
+app/path.py:105:    return '/admin/developers/edit/'+str(developer_id)

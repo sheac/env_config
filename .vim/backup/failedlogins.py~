@@ -1,0 +1,54 @@
+from django.db import models
+from django.db.models import Q
+
+from django.core import validators
+
+from django.utils.timezone import utc
+import hashlib, datetime, uuid
+
+from ymc.lib import httprequest
+from ymc_platform import settings
+
+"""
+    FailedLogin model
+"""
+class FailedLogin(models.Model):
+
+    # Field List
+    user = models.ForeignKey('ymc.User')
+    created_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'failedlogins'
+        app_label = 'ymc'
+
+    @staticmethod
+    def RecordNewByUser(user_id):
+        failed_login, b_created = FailedLogin.objects.get_or_create(user_id=user_id)
+
+        failed_login.created_at = datetime.datetime.utcnow().replace(tzinfo=utc)
+        failed_login.created_at = failed_login.created_at.astimezone(utc)
+
+        try:
+            failed_login.full_clean()
+        except Exception as e:
+            logger.error("Error recording failed login: %s" % e)
+            return null
+
+        failed_login.save()
+
+        return failed_login
+
+    @staticmethod
+    def RemoveByUser(user_id):
+    failed_login = FailedLogin.FindByUserId(uid)
+
+    if (failed_login):
+        failed_login.delete()
+        return true
+    else:
+        return false
+
+    @staticmethod
+    def FindByUserId(user_id):
+        return FailedLogin.objects.filter(user_id=user_id).all()[:1]

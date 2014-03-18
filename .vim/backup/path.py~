@@ -1,0 +1,118 @@
+
+"""
+"""
+def admin_home():
+    return '/admin'
+"""
+"""
+def admin_login():
+    return '/admin/login'
+
+
+"""
+"""
+def admin_logout():
+    return '/admin/logout'
+
+
+"""
+    ADMIN USERS
+"""
+def admin_users():
+    return '/admin/users'
+
+from django.conf import settings
+
+"""
+"""
+def admin_users_new():
+    return '/admin/users/new'
+
+"""
+"""
+def admin_users_show(user_id):
+    return '/admin/users/'+str(user_id)
+
+"""
+"""
+def admin_users_edit(user_id):
+    return '/admin/users/edit/'+str(user_id)
+
+"""
+"""
+def admin_users_delete(user_id):
+    return '/admin/users/delete/'+str(user_id)
+
+"""
+"""
+def admin_users_password(user_id):
+    return '/admin/users/password/'+str(user_id)
+
+"""
+"""
+def admin_users_games_add(user_id):
+    return '/admin/users/'+str(user_id)+'/games/add'
+
+"""
+"""
+def admin_users_games_remove(user_id):
+    return '/admin/users/'+str(user_id)+'/games/remove'
+
+def admin_users_reset_password(user_id):
+    return '/admin/users/reset-password/'+str(user_id)
+
+"""
+ ADMIN GAMES
+"""
+def admin_games():
+    return '/admin/games'
+
+"""
+"""
+def admin_games_new():
+    return '/admin/games/new'
+
+"""
+"""
+def admin_games_delete(game_id):
+    return '/admin/games/delete/'+str(game_id)
+
+"""
+"""
+def admin_games_edit(game_id):
+    return '/admin/games/edit/'+str(game_id)
+
+
+"""
+    ADMIN PERMISSIONSGROUPS
+"""
+def admin_permissionsgroups(group_type):
+    return '/admin/'+group_type+'s'
+
+"""
+"""
+def admin_permissionsgroups_new(group_type):
+    return '/admin/'+group_type+'s/new'
+
+"""
+"""
+def admin_permissionsgroups_delete(group_id, group_type):
+    return '/admin/'+group_type+'s/delete/'+str(group_id)
+
+"""
+"""
+def admin_permissionsgroups_edit(group_id, group_type):
+    return '/admin/'+group_type+'s/edit/'+str(group_id)
+
+"""
+    ADMIN USERS GAMES
+"""
+def admin_users_games_edit(usersgames_id):
+    return '/admin/usersgames/edit/'+str(usersgames_id)
+
+
+"""
+    EMAIL LIST PAGE
+"""
+def email_list_verify():
+    return '/emaillist'

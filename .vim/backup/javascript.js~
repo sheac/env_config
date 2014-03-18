@@ -1,0 +1,219 @@
+	
+	
+	
+	
+	
+	
+	
+	/* RESIZING THE BANNER IMAGE */	
+								
+				$(window).load(function(){ 
+				resizeBanner();				
+				});
+								
+				$(window).resize(resizeBanner);
+		
+				function resizeBanner(){
+				
+					var lowerlimit = 1140;
+					var uppperlimit = 1895;
+					var div = $('.dynamicheight');
+					var div2 = $('.topsection');
+					var div3 =$('.footerbox');
+					var howbigispage = $(window).height();
+
+					var width = div.width();  					
+										
+	  				//console.log(width);
+  					if (width > lowerlimit && width < uppperlimit) 			
+						{
+						//div.css('height', Math.round((width)/(1895/600)));	
+						//div2.css('height', Math.round((width)/(1895/600)));	
+						div.css('height', 600);	
+						div2.css('height', 600);				
+						}
+					
+					else if(width >= uppperlimit){
+						div.css('height', 600);	
+						div2.css('height', 600);					
+					}
+					
+					else 
+						{
+						//div.css('height', '361');	
+						//div2.css('height', '361');
+						div.css('height', 600);	
+						div2.css('height', 600);	
+						}
+						
+
+				}
+
+
+				
+	                var image1;
+                	var image2;
+                	var image3;
+				
+					
+				/* PRELOAD IMAGES FOR SWITCHING */	
+				var myimages=new Array();
+				
+				function preloadimages(){
+					for (i=0;i<preloadimages.arguments.length;i++){
+						myimages[i]=new Image();
+						myimages[i].src=preloadimages.arguments[i];
+						}
+						}
+
+
+				//Enter path of images to be preloaded inside parenthesis. Extend list as desired.
+				preloadimages("img/navigation/gameshover.png", "img/navigation/facebookhover.png", "img/navigation/twitterhover.png");
+		
+		
+
+				var currentimage = 0;
+				var countdown = 5;
+				
+                /* SHEA
+                   shea's code starts here
+                   NOTES:
+                    - no need for variable "nextimage" anymore
+                    - this should also elimate the need for the "switchimages" function
+                    - in order to get the buttons working, use "moveForward" 
+                        and "moveBackward" as the javascript functions to be called
+                        for the appropriate buttons
+                    - the new flipimages function should work like the old one
+                */
+
+
+
+                // figures out what image is next, given the current
+                // image.
+                function getNext() {
+                    return (currentimage + 1) % 3;
+                };
+
+                // figures out what image was just before this one,
+                // given the current image
+                function getPrev() {
+                    return (currentimage + 2) % 3;
+
+                };
+                
+                
+
+				
+                // moves on to the next image
+                function moveForward() {
+                	//console.log(countdown);
+                	if (countdown == 0){
+                		 setOnlyVisible(getNext());  
+                		 countdown = 5;
+                	}
+                	
+                	else{
+                		countdown = countdown-1;
+                	}
+        
+                };  
+                
+                   //signals that use has clicked on arrows in the last _ seconds. 
+         		function moveForwardClick() { 
+         				setOnlyVisible(getNext());   
+                   		countdown = 10;
+         			}         
+                
+
+                // moves back to the previous image
+                function moveBackwardClick() {
+                	 	setOnlyVisible(getPrev());	
+                   		countdown = 10;
+                };
+             
+                        
+                
+                
+
+                // does the following:
+                //  - sets exactly one image (indicated by imageNum)
+                //      to opacity 1, and all the others to 0
+                //  - sets the subtitle visibility based on imageNum
+                //  - updates the variable currentimage to imageNum
+                function setOnlyVisible(imageNum) {
+                	// moved this out of the switchimages function into the wide-open
+
+                	// moved this out of the switchimages function
+                
+                    setImageVisible(image1, imageNum == 0);
+                    setImageVisible(image2, imageNum == 1);
+                    setImageVisible(image3, imageNum == 2);
+
+                    setSubtitleVisibility(imageNum);
+                    currentimage = imageNum;
+                };
+
+                // for the image passed in, sets its opacity to 1 if
+                // shouldBeVisible is true and 0 otherwise
+                function setImageVisible(image, shouldBeVisible) {
+                    var opacity = shouldBeVisible ? 1 : 0;
+                    image.css('opacity', opacity);
+                };
+
+                // sets the subtitle visibility to 1 if imageNum is 1, and
+                // 0 otherwise
+                function setSubtitleVisibility(imageNum) {
+                    var opacity = imageNum == 0 ? 1 : 0;
+                    $('.subtitlekingdoms').css('opacity', opacity);
+                };
+                
+                
+                 // sets the subtitle visibility to 1 if imageNum is 1, and
+                // 0 otherwise
+                function setSubtitleVisibility(imageNum) {
+                    var opacity = imageNum == 0 ? 1 : 0;
+                    $('.subtitlekingdoms').css('opacity', opacity);
+                    
+                     var opacity = imageNum == 1 ? 1 : 0;
+                    $('.subtitleplanetraid').css('opacity', opacity);
+                    
+                    var opacity = imageNum == 2 ? 1 : 0;
+                    $('.subtitletreasurecove').css('opacity', opacity);
+                };
+                
+                
+                
+                
+                
+                
+
+
+                // new version of flipimages function
+                function flipimages() {
+                    window.setInterval(moveForward, 1000);   
+                };
+                
+               window.onload = function start() { 		 				  
+   		 			flipimages();
+   		 			image1 = $('.firstimage');
+                	image2 = $('.secondimage');
+                	image3 = $('.thirdimage');
+
+                    setUpSubscriptionForm();
+				}
+				
+				
+                function setUpSubscriptionForm() {
+                    $('#subscription-form .button-subscribe').click(function() {
+                        console.log("clicked");
+                        $('#subscription-form').hide();
+                        $('#subscription-confirmation').show();
+                    });
+                }
+
+				
+				
+
+					
+
+

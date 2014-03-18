@@ -1,0 +1,17 @@
+<div id="ymca_zone" class="">
+    <br/>
+    <br/>
+    <br/>
+    <?php echo var_dump($user) ?>
+    <br/>
+    <br/>
+    <br/>
+    <br/>
+    <?php echo var_dump($game->ymc_id) ?>
+    <?php echo var_dump($game->ymc_id) ?>
+    <br/>
+    <br/>
+    <iframe width='100%' height=900 name="ymca" id="ymca" src="<?php echo Path::ymca_url($user, $game)?>">
+
+    </iframe>
+</div>

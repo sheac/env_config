@@ -1,0 +1,15 @@
+var DB_STR = '192.168.1.57:27017/ymca?slaveOk=true';
+var mongojs = require('mongojs');
+var db = mongojs(DB_STR);
+var events = db.collection('events');
+var sdk_debug = db.collection('sdk_debug');
+
+var addUSD = require ('../tools/currency-translation/add-currency-info-to-collection.js').addInfoToCollection;
+
+var callback = function() {
+    console.log("finished updating a collection");
+    process.exit(0);
+}
+
+addUSD(events, null, callback);
+addUSD(sdk_debug, null, callback);

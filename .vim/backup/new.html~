@@ -1,0 +1,87 @@
+{% include "admin/header.html" %}
+{% load menu_items %}
+
+    <div class='grid_12'>
+        <h1>New Game</h1>
+    </div>
+
+    <form action="{% admin_games_new %}" method="post">{% csrf_token %}
+        
+        <div class='grid_12'>
+            {{ form.non_field_errors }}
+        </div>
+    
+        <div class='admin-form'>
+            <div class='grid_5'>
+                <div class="field-wrapper">
+                    <label for="title">{{ form.title.label }}</label>
+                    {{ form.title }}
+                    {{ form.title.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="developer">{{ form.developer.label }}</label>
+                    {{ form.developer }}
+                    {{ form.developer.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="ymc_id">{{ form.ymc_id.label }}</label>
+                    {{ form.ymc_id }}
+                    {{ form.ymc_id.errors }}
+                </div>
+                <div class='grid_3 alpha'>
+                    <div class="field-wrapper">
+                        <label for="created_at">{{ form.created_at.label }}</label>
+                        {{ form.created_at }}
+                        {{ form.created_at.errors }}
+                    </div>
+                </div>
+                <div class='clear'></div>
+                <div class="field-wrapper">
+                    <label for="created_at">{{ form.reset_password_base_address.label }}</label>
+                    {{ form.reset_password_base_address }}
+                    {{ form.reset_password_base_address.errors }}
+                </div>
+                <div class='clear'></div>
+                <div class="field-wrapper">
+                    <label for="created_at">{{ form.allow_unregistered_login.label }}</label>
+                    {{ form.allow_unregistered_login }}
+                    {{ form.allow_unregistered_login.errors }}
+                </div>
+            </div>
+            <div class='grid_5 push_1'>
+                <h2>Analytics</h2>
+                <div class="field-wrapper">
+                    <label for="mp_token">{{ form.mp_token.label }}</label>
+                    {{ form.mp_token }}
+                    <span class='hint'>{{ form.mp_token.help_text }}</span>
+                    {{ form.mp_token.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="mp_secret">{{ form.mp_secret.label }}</label>
+                    {{ form.mp_secret }}
+                    <span class='hint'>{{ form.mp_secret.help_text }}</span>
+                    {{ form.mp_secret.errors }}
+                </div>
+                <div class="field-wrapper">
+                    <label for="mp_key">{{ form.mp_key.label }}</label>
+                    {{ form.mp_key }}
+                    <span class='hint'>{{ form.mp_key.help_text }}</span>
+                    {{ form.mp_key.errors }}
+                </div>
+            </div>
+            <div class='clear'></div>
+        </div>
+        <br/>
+        <input type="submit" value="Create Game"  class='button'/>
+        <a href='{% admin_games %}'><input type="button" value="Cancel"  class='button'/></a>
+    </form>
+
+
+    <script type='text/javascript'>
+        $(document).ready(function() {
+            $('#id_created_at').datepicker({});
+        });
+    </script>
+
+{% include "admin/footer.html" %}
+

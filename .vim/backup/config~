@@ -1,0 +1,79 @@
+Host platform_dev
+    User ubuntu
+    HostName 192.168.1.53
+Host publish_dev
+    User ubuntu
+    HostName 192.168.1.52
+Host analytics_dev
+    User ubuntu
+    HostName 192.168.1.54
+
+Host local_publish
+    User ubuntu
+    HostName 127.0.0.1
+    Port 2222
+
+Host platform_test
+    User ubuntu
+    HostName 107.20.168.24
+    IdentityFile ~/.ssh/ymc_admin.pem
+Host publish_test
+    User ubuntu
+    Hostname 192.168.1.51
+Host analytics_test
+    User ubuntu
+    HostName 192.168.1.57
+
+Host platform_stage
+    User ubuntu
+    HostName apistage.ymcgames.com
+    IdentityFile ~/.ssh/ymc_admin.pem
+
+Host platform_prod
+    User ubuntu
+    HostName 54.221.244.61
+    IdentityFile ~/.ssh/ymc_admin.pem
+Host publish_prod
+    User ubuntu
+    HostName 54.235.220.131
+    IdentityFile ~/.ssh/ymc_admin.pem
+
+Host analytics_db0_prod
+    User ubuntu
+    HostName mongodb0.ymcnetwork.com
+    IdentityFile ~/.ssh/ymca_keypair.pem
+Host analytics_db1_prod
+    User ubuntu
+    HostName mongodb1.ymcnetwork.com
+    IdentityFile ~/.ssh/ymca_keypair.pem
+Host analytics_db2_prod
+    User ubuntu
+    HostName mongodb2.ymcnetwork.com
+    IdentityFile ~/.ssh/ymca_keypair.pem
+Host analytics_proxy1_prod
+    User ubuntu
+    HostName yax01.ymcnetwork.com
+    IdentityFile ~/.ssh/ymca_keypair.pem
+Host analytics_proxy2_prod
+    User ubuntu
+    HostName yax02.ymcnetwork.com
+    IdentityFile ~/.ssh/ymca_keypair.pem
+Host analytics_reporter_prod
+    User ubuntu
+    HostName ya.ymcnetwork.com
+    IdentityFile ~/.ssh/ya_web.pem
+
+## TEMP
+
+Host test_anal_prime
+    User ubuntu
+    HostName 54.237.36.29
+    IdentityFile ~/.ssh/ymca_keypair.pem
+Host test_anal_sec1
+    User ubuntu
+    HostName 54.221.7.28
+    IdentityFile ~/.ssh/ymca_keypair.pem
+Host test_anal_sec2
+    User ubuntu
+    HostName 54.227.222.34
+    IdentityFile ~/.ssh/ymca_keypair.pem

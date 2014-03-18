@@ -1,0 +1,3 @@
+<div ng-controller='retentionController'>
+    <ng-include src="'./view/dashboards/templates/retention_template.html'"></ng-include>
+</div>

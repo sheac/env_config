@@ -1,0 +1,43 @@
+from django.http import HttpResponse, HttpResponseRedirect
+
+from django.core.exceptions import ValidationError, NON_FIELD_ERRORS
+
+from django.shortcuts import render
+from django.conf import settings
+
+from django import forms
+from django.db import models
+
+from ymc.model.usersgames import UsersGames
+from ymc.lib import authentication as ApiAuthentication
+
+from app.views.admin import usersgamesforms
+from app.session import force_login
+from app import path
+
+from django.forms.models import model_to_dict
+
+from django.utils.timezone import utc
+import uuid, datetime
+
+"""
+"""
+@force_login
+@requires_admin
+def edit(request, usersgames_id=None,):
+
+    try:
+        usergame = UsersGames.objects.get(id=usersgames_id)
+    except UsersGames.DoesNotExist:
+        raise Http404
+
+    form  = usersgamesforms.AdminEditUserGameForm(instance=usergame)
+    if(request.method == 'POST'):
+
+        form = usersgamesforms.AdminEditUserGameForm(request.POST, instance=usergame)
+        if(form.is_valid()):
+            form.save()
+            return HttpResponseRedirect(path.admin_users_show(usergame.users_id))
+
+    template_vars = {'usergame': usergame,'user': usergame.users, 'user_fullname': usergame.users.GetFullName(), 'game': usergame.games, 'form': form}
+    return  render(request, 'admin/usersgames/edit.html', template_vars)

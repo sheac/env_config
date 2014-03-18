@@ -1,0 +1,314 @@
+var currencyConversion = require('./curr-convert');
+var db = require('../../reporter/database').db;
+var async = require('async');
+
+
+var collections = [
+    db.collection('events'),
+    db.collection('sdk_debug'),
+];
+
+var createTestCollName = function(actualCollName) {
+    return 'curr_convert_test.'+actualCollName;
+}
+
+var collectionFromTestCollName = function(testCollName) {
+    var lastDotIdx = testCollName.lastIndexOf('.');
+    return testCollName.substring(lastDotIdx+1);
+}
+
+var testTypeFromId = function(_id) {
+    var lastDotIdx = _id.lastIndexOf('.');
+    return _id.substring(lastDotIdx+1);
+}
+
+async.series([
+        function(asyncCallback) {
+            currencyConversion.initialize(asyncCallback);
+        },
+
+        function(seriesCallback) {
+
+            var mapFunction = function() {
+                var foundUsd = Number(this.properties.YA0USD || 0) != 0;
+                var expectUsd = Number(this.properties.amount) != 0 &&
+                                currencyCodes.indexOf(this.properties.currency) >= 0;
+
+                var foundButNotExpected      = foundUsd && !expectUsd;
+                var expectedButNotFound      = !foundUsd && expectUsd;
+                var erroneousHasProperErrors = this.event == 'YA0charge' ||
+                                                (this.properties.YA0error &&
+                                                this.properties.YA0error.indexOf('properties.YA0USD') > (-1));
+
+                var _idAndCount = {_ids: [this._id], count: 1};
+                if (foundButNotExpected) {
+                    emit(collName+'.usd_found_but_not_expected', _idAndCount);
+                } else if (expectedButNotFound) {
+                    emit(collName+'.usd_expected_but_not_found', _idAndCount);
+                } else if (!erroneousHasProperErrors) {
+                    emit(collName+'.is_erroneous_but_has_no_error_array', _idAndCount);
+                } else {
+                    emit(collName+'.success', _idAndCount);
+                }
+            };
+
+            var reduceFunction = function(keyStatus, IdAndCountVals) {
+                var reducedVal = {
+                    count: 0,
+                    _ids: []
+                };
+                for (var idx = 0; idx < IdAndCountVals.length; idx++) {
+                    reducedVal.count += IdAndCountVals[idx].count;
+                    if (keyStatus.indexOf('.success') == (-1)) {
+                        for (var idx2 = 0; idx2 < IdAndCountVals[idx]._ids.length; idx2++) {
+                            reducedVal._ids.push(IdAndCountVals[idx]._ids[idx2]);
+                        }
+                    }
+                }
+                return reducedVal;
+            };
+
+            async.eachSeries(collections, function(collection, eachCallback) {
+                    collection.mapReduce(
+                        mapFunction,
+                        reduceFunction,
+                        {
+                            scope: {
+                                currencyCodes: codes,
+                                collName: collection._name,
+                            },
+                            query: {
+                                event: {$in: ['YA0charge', 'YA0charge_X']}
+                            },
+                            out: 'inline',
+                            verbose: true,
+                        },
+                        function(err) {
+                            if (err) {throw err;}
+                            console.log("done collection:", collection._name);
+                            eachCallback();
+                        }
+                    );
+                },
+                function(err, results) {
+                    if (err) {throw err};
+                    console.log("finished testing phase");
+                    console.log(results);
+                    seriesCallback();
+                }
+            );
+        },
+
+        /*
+        function(seriesCallback) {
+            console.log("\n==============================");
+            console.log("\tResults");
+            console.log("==============================");
+
+            async.eachSeries(collections, function(collection, eachCallback) {
+                    var testCollName = createTestCollName(collection._name);
+                    var testCollection = db.collection(testCollName);
+
+                    console.log("For collection:", collectionFromTestCollName(testCollName));
+                    testCollection.find({}, function(err, results) {
+                        results.forEach(function(result, idx) {
+                            console.log("\tFor the case:", testTypeFromId(result._id));
+                            console.log("\tthere were", result.value.count, "occurences.");
+                            console.log("\tRun the following query to find the _ids of the revelant documents:");
+                            console.log("\t\tdb."+testCollName+".find({_id: '" + result._id+ "'});\n");
+                        });
+                        eachCallback();
+                    });
+                },
+                function(err) {
+                    if (err) {throw err};
+                    seriesCallback();
+                }
+            );
+        }
+        */
+    ],
+    function(err) {
+        if (err) {throw err};
+        console.log("\n\nNOTE: this is not a super-complete test. It only ensures the\n" +
+                "presence or absence of 'properties.YA0USD' for 'YA0charge' and\n" +
+                "'YA0charge_X' events.\n" +
+                "Recommended that you do some queries like:\n" +
+                "\tdb.events.distinct('properties.YA0USD', {event: 'YA0charge'})\n" +
+                "\tdb.events.distinct('properties.YA0USD', {event: 'YA0charge_X'})\n" +
+                "\tdb.events.distinct('properties.currency', {event: 'YA0charge'})\n" +
+                "\tdb.events.distinct('properties.currency', {event: 'YA0charge_X'})\n" +
+                "As well as verifying the amounts using the currencyConversion\n" +
+                "library in a NodeJS console.\n\n");
+        process.exit(0);
+});
+
+
+codes = [
+    'AED',
+    'AFN',
+    'ALL',
+    'AMD',
+    'ANG',
+    'AOA',
+    'ARS',
+    'AUD',
+    'AWG',
+    'AZN',
+    'BAM',
+    'BBD',
+    'BDT',
+    'BGN',
+    'BHD',
+    'BIF',
+    'BMD',
+    'BND',
+    'BOB',
+    'BRL',
+    'BSD',
+    'BTC',
+    'BTN',
+    'BWP',
+    'BYR',
+    'BZD',
+    'CAD',
+    'CDF',
+    'CHF',
+    'CLF',
+    'CLP',
+    'CNY',
+    'COP',
+    'CRC',
+    'CUP',
+    'CVE',
+    'CZK',
+    'DJF',
+    'DKK',
+    'DOP',
+    'DZD',
+    'EEK',
+    'EGP',
+    'ERN',
+    'ETB',
+    'EUR',
+    'FJD',
+    'FKP',
+    'GBP',
+    'GEL',
+    'GHS',
+    'GIP',
+    'GMD',
+    'GNF',
+    'GTQ',
+    'GYD',
+    'HKD',
+    'HNL',
+    'HRK',
+    'HTG',
+    'HUF',
+    'IDR',
+    'ILS',
+    'INR',
+    'IQD',
+    'IRR',
+    'ISK',
+    'JEP',
+    'JMD',
+    'JOD',
+    'JPY',
+    'KES',
+    'KGS',
+    'KHR',
+    'KMF',
+    'KPW',
+    'KRW',
+    'KWD',
+    'KYD',
+    'KZT',
+    'LAK',
+    'LBP',
+    'LKR',
+    'LRD',
+    'LSL',
+    'LTL',
+    'LVL',
+    'LYD',
+    'MAD',
+    'MDL',
+    'MGA',
+    'MKD',
+    'MMK',
+    'MNT',
+    'MOP',
+    'MRO',
+    'MTL',
+    'MUR',
+    'MVR',
+    'MWK',
+    'MXN',
+    'MYR',
+    'MZN',
+    'NAD',
+    'NGN',
+    'NIO',
+    'NOK',
+    'NPR',
+    'NZD',
+    'OMR',
+    'PAB',
+    'PEN',
+    'PGK',
+    'PHP',
+    'PKR',
+    'PLN',
+    'PYG',
+    'QAR',
+    'RON',
+    'RSD',
+    'RUB',
+    'RWF',
+    'SAR',
+    'SBD',
+    'SCR',
+    'SDG',
+    'SEK',
+    'SGD',
+    'SHP',
+    'SLL',
+    'SOS',
+    'SRD',
+    'STD',
+    'SVC',
+    'SYP',
+    'SZL',
+    'THB',
+    'TJS',
+    'TMT',
+    'TND',
+    'TOP',
+    'TRY',
+    'TTD',
+    'TWD',
+    'TZS',
+    'UAH',
+    'UGX',
+    'USD',
+    'UYU',
+    'UZS',
+    'VEF',
+    'VND',
+    'VUV',
+    'WST',
+    'XAF',
+    'XAG',
+    'XAU',
+    'XCD',
+    'XDR',
+    'XOF',
+    'XPF',
+    'YER',
+    'ZAR',
+    'ZMK',
+    'ZMW',
+    'ZWL'
+]

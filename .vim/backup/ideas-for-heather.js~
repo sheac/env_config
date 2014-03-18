@@ -1,0 +1,36 @@
+idea:
+
+col_ids = [
+    "column1",
+    //...
+    "column2",
+]
+
+var max_height = -1;
+
+for (var i = 0; i < col_ids.length; i++) {
+   var height = $("#" + col_ids[i] + " .textdescription").height()
+    if (height > max_height) {
+        max_height = height;
+    }
+}
+
+
+/*
+=========
+Side Benefit of "col_ids" variable
+=========
+*/
+
+
+// old way:
+$("#column1").doSometin();
+$("#column2").doSometin();
+$("#column3").doSometin();
+$("#column4").doSometin();
+
+
+//new way:
+for (var i = 0; i < col_ids.length; i++) {
+    $("#"+col_ids[i]).doSometin();
+}

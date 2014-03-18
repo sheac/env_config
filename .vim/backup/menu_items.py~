@@ -1,0 +1,127 @@
+from django import template
+
+from app import path
+
+register = template.Library()
+
+@register.simple_tag
+def admin_home():
+    return path.admin_home()
+
+
+
+@register.simple_tag
+def admin_users():
+    return path.admin_users()
+
+@register.simple_tag
+def admin_logout():
+    return path.admin_logout()
+
+@register.simple_tag
+def admin_users_new():
+    return path.admin_users_new()
+
+@register.filter
+def admin_users_edit(user_id):
+    return path.admin_users_edit(user_id)
+
+@register.filter
+def admin_users_show(user_id):
+    return path.admin_users_show(user_id)
+
+@register.filter
+def admin_users_delete(user_id):
+    return path.admin_users_delete(user_id)
+
+@register.filter
+def admin_users_password(user_id):
+    return path.admin_users_password(user_id)
+
+@register.filter
+def admin_users_games_add(user_id):
+    return path.admin_users_games_add(user_id)
+
+@register.filter
+def admin_users_games_remove(user_id):
+    return path.admin_users_games_remove(user_id)
+
+@register.simple_tag
+def admin_games():
+    return path.admin_games()
+
+@register.filter
+def admin_users_reset_password(user_id):
+    return path.admin_users_reset_password(user_id)
+
+
+"""
+    GAMES
+"""
+@register.simple_tag
+def admin_games_new():
+    return path.admin_games_new()
+
+@register.filter
+def admin_games_edit(game_id):
+    return path.admin_games_edit(game_id)
+
+@register.filter
+def admin_games_delete(game_id):
+    return path.admin_games_delete(game_id)
+
+@register.filter
+def admin_games_show(game_id):
+    return path.admin_games_show(game_id)
+
+
+"""
+    PERMISSIONS GROUP
+"""
+
+@register.filter
+def admin_permissionsgroups(group_type):
+    return path.admin_permissionsgroups(group_type)
+
+@register.filter
+def admin_permissionsgroups_new(group_type):
+    return path.admin_permissionsgroups_new(group_type)
+
+@register.filter
+def admin_permissionsgroups_edit(group):
+    return path.admin_permissionsgroups_edit(str(group.id), group.group_type().lower())
+
+@register.filter
+def admin_permissionsgroups_delete(group):
+    return path.admin_permissionsgroups_delete(str(group.id), group.group_type().lower())
+
+@register.filter
+def admin_permissionsgroups_show(group):
+    return path.admin_permissionsgroups_show(str(group.id), group.group_type().lower())
+
+"""
+    USERS GAMES
+"""
+@register.filter
+def admin_users_games_edit(usergames_id):
+    return path.admin_users_games_edit(usergames_id)
+
+
+def _parse_group_id_and_type(params):
+    group_id_and_type = [param.strip() for param in params.split(',')]
+    if not (len(group_id_and_type) == 2):
+        return None
+    else:
+        return group_id_and_type
+
+
+"""
+    EMAIL LIST PAGE
+"""
+@register.filter
+def email_list_verify():
+    return path.email_list_verify()
+
+@register.filter
+def email_list_fetch():
+    return path.email_list_fetch()

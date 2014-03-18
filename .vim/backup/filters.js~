@@ -1,0 +1,10 @@
+angular.module('reporterFilters', []).filter('simpleUTCDate', function() {
+    return function(dateStr, fomatStr) {
+        var momentDate = moment(dateStr);
+        momentDate.utc();
+        if (!formatStr || typeof formatStr == 'undefined') {
+            formatStr = "MMM D YYYY";
+        }
+        return momentDate.format(formatStr);
+    };
+});

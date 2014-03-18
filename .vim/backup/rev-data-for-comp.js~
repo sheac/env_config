@@ -1,0 +1,149 @@
+var db = require('../../reporter/database').db;
+
+var gameIds = {
+    kingdoms: "0cea0618006511e384c212313b0ace15",
+    planet_raid: "2a3a10f13deefdd13568639068f00d46",
+};
+
+var EPS = 0.15;
+
+var APPLES_CUT = 0.3;
+
+var allPurchaseTypes = {
+    kingdoms: [
+            {name: '45gem', price: 4.99},
+            {name: '100gem', price: 9.99},
+            {name: '215gem', price: 19.99},
+            {name: '550gem', price: 49.99},
+            {name: '1150gem', price: 99.99},
+            {name: 'bard_bundle', price: 9.99},
+            {name: 'dragon_bundle', price: 19.99},
+        ],
+    planet_raid: [
+            {name: '50diamonds', price: 0.99},
+            {name: '275diamonds', price: 4.99},
+            {name: '550diamonds', price: 9.99},
+            {name: '1150diamonds', price: 19.99},
+            {name: '3000diamonds', price: 49.99},
+        ],
+};
+
+function padString(width, string, padding) { 
+  return (width <= string.length) ? string : padString(width, padding + string, padding)
+}
+
+var priceFromRevenue = function(revenue) {
+    return (1.0 / (1.0-APPLES_CUT))*revenue;
+};
+
+var gamePurchaseNames = function(gamePurchaseTypes) {
+    var types = [];
+    gamePurchaseTypes.forEach(function(purchase, idx) {
+        types.push(purchase.name);
+    });
+    return types;
+};
+
+var createEmptyPurchases = function(gamePurchaseTypes) {
+    var emptyPurchases = {};
+    var types = gamePurchaseNames(gamePurchaseTypes);
+    types.forEach(function(type, idx) {
+        emptyPurchases[type] = 0;
+    });
+    return emptyPurchases;
+};
+
+var getItemLabel = function(revenue, gamePurchaseTypes) {
+    var projectedPrice = priceFromRevenue(revenue);
+    var upperBound = projectedPrice * (1 + EPS),
+        lowerBound = projectedPrice * (1 - EPS);
+    var name = null;
+    gamePurchaseTypes.forEach(function(type, idx) {
+        if (type.price >= lowerBound && type.price <= upperBound) {
+            name = type.name;
+        }
+    });
+    return name;
+}
+
+var generatePurchases = function(doc, gamePurchaseTypes) {
+    var purchases = createEmptyPurchases(gamePurchaseTypes);
+    var label = getItemLabel(doc.properties.YA0USD, gamePurchaseTypes);
+    if (label) {
+        purchases[label] += 1;
+    } else {
+        print("\tcouldn't find label for purchase with revenue: ", doc.properties.YA0USD);
+    }
+    return purchases;
+};
+
+var getDateFormatted = function(doc) {
+    var date = doc.properties.time_pacific;
+    var yearStr = date.getFullYear().toString(),
+        monthStr = padString(2, (date.getMonth()+1).toString(), '0'),
+        dayStr = padString(2, date.getDate().toString(), '0');
+    return yearStr + "-" + monthStr + "-" + dayStr;
+};
+
+var mapFunction = function() {
+    var dateStr = getDateFormatted(this);
+    var purchases = generatePurchases(this, gamePurchaseTypes);
+    emit(dateStr, purchases);
+};
+
+var reduceFunction = function(keyDate, valuesPurchases) {
+    var reducedPurchases = createEmptyPurchases(gamePurchaseTypes);
+
+    for (var i=0; i < valuesPurchases.length; i++) {
+        var purchaseObj = valuesPurchases[i];
+        for (var item in purchaseObj) {
+            reducedPurchases[item] += purchaseObj[item];
+        }
+    }
+
+    return reducedPurchases;
+};
+
+var startDate = new Date([2014, 2, 8]),
+    endDate = new Date([2014, 3, 3]);
+//var gameName = 'kingdoms';
+var gameName = 'planet_raid';
+var gameId = gameIds[gameName];
+
+
+//db.events.mapReduce(
+var db_events = db.collection('events');
+db_events.mapReduce(
+        mapFunction,
+        reduceFunction,
+        {
+            query: {
+                event: 'YA0charge',
+                'properties.YA0token': gameId,
+                'properties.time_pacific': {
+                    $gte: startDate,
+                    $lte: endDate,
+                },
+            },
+            out: {'inline': 1},
+            verbose: true,
+            scope: {
+                gamePurchaseTypes: allPurchaseTypes[gameName],
+                gameName: gameName,
+                getDateFormatted: getDateFormatted,
+                generatePurchases: generatePurchases,
+                getItemLabel: getItemLabel,
+                gamePurchaseNames: gamePurchaseNames,
+                createEmptyPurchases: createEmptyPurchases,
+                priceFromRevenue: priceFromRevenue,
+                padString: padString,
+                APPLES_CUT: APPLES_CUT,
+                EPS: EPS,
+            },
+        },
+        function(err, collection, stats){
+            if (err) {throw err;}
+            console.log(collection);
+            process.exit(0);
+        });
+

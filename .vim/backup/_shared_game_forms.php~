@@ -1,0 +1,38 @@
+<?php if($is_admin) : ?>
+    <?php echo Form::field_start($game,'itunes_id'); ?>
+    <?php echo Form::label('itunes_id',__($game->label('itunes_id'))); ?><br>
+    <?php echo Form::input('itunes_id',$game->itunes_id, array('class' => 'medium')); ?>
+    <?php echo Form::field_end($game,'itunes_id'); ?>
+<?php else : ?>
+    <?php echo Form::label('itunes_id',__($game->label('itunes_id'))); ?><br>
+    <?php echo '<p>'. (isset($game->itunes_id)? $game->itunes_id : '<i>Not available.</i>') . '</p>'; ?>
+<?php endif; ?>
+
+    <div class='clear'></div>
+    <br>
+    <?php echo Form::field_start($game,'game_center'); ?>
+    <?php echo Form::checkbox('game_center',true, (bool)$game->game_center);  ?>
+    <?php echo Form::label('game_center',__($game->label('game_center'))); ?>
+    <?php echo Form::field_end($game,'game_center'); ?>
+
+    <?php echo Form::field_start($game,'iCloud'); ?>
+    <?php echo Form::checkbox('iCloud',true,(bool)$game->iCloud); ?>
+    <?php echo Form::label('iCloud',__($game->label('iCloud'))); ?>
+    <?php echo Form::field_end($game,'iCloud'); ?>
+
+    <?php echo Form::field_start($game,'in_app_purchases'); ?>
+    <?php echo Form::checkbox('in_app_purchases',true,(bool)$game->in_app_purchases); ?>
+    <?php echo Form::label('in_app_purchases',__($game->label('in_app_purchases'))); ?>
+    <?php echo Form::field_end($game,'in_app_purchases'); ?>
+
+    <?php echo Form::field_start($game,'notifications'); ?>
+    <?php echo Form::checkbox('notifications',true,(bool)$game->notifications); ?>
+    <?php echo Form::label('notifications',__($game->label('notifications'))); ?>
+    <?php echo Form::field_end($game,'notifications'); ?>
+
+<?php if($is_admin) : ?>
+    <?php echo Form::field_start($game,'platform'); ?>
+    <?php echo Form::label('platform',__($game->label('platform'))) ?>
+    <?php echo Form::select('platform',$game->get_game_platforms(),$game->platform) ?>
+    <?php echo Form::field_end($game,'platform'); ?>
+<?php endif; ?>

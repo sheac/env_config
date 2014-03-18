@@ -1,0 +1,62 @@
+from django.http import HttpResponse, HttpResponseRedirect
+from app import path
+
+from ymc_platform import settings
+
+from ymc.model.games import Game
+
+from django.contrib.sessions.backends.db import SessionStore
+
+"""
+"""
+def force_login(view):
+    def f(request, *args, **kwargs):
+
+        access_token = request.session.get(settings.SESSION_COOKIE_NAME, None)
+
+        if(not access_token):
+            return HttpResponseRedirect(path.admin_login())
+        else:
+            return view(request, *args, **kwargs)
+
+    return f
+
+
+"""
+"""
+def requires_admin(view):
+    def f(request, *args, **kwargs):
+
+        if (not request.session.get('is_admin')):
+            return HttpResponseRedirect(path.admin_home())
+        else:
+            return view(request, *args, **kwargs)
+
+    return f
+
+
+"""
+"""
+def requires_game_ownership(view):
+    def f(request, *args, **kwargs):
+
+        is_admin = request.session.get('is_admin')
+        pub_id = request.session.get('publisher_id')
+        game_id = kwargs.get('game_id', None)
+        game = game_id and Game.objects.get(id=game_id)
+        print game
+        print game.publisher_id
+        print pub_id
+
+        if (not (is_admin or (pub_id and game_id and game and game.publisher_id == pub_id))):
+            return HttpResponseRedirect(path.admin_home())
+        else:
+            return view(request, *args, **kwargs)
+
+    return f
+
+
+"""
+"""
+def is_logged_in(request):
+    return (request.session.get(settings.SESSION_COOKIE_NAME))

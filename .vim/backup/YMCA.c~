@@ -1,0 +1,380 @@
+//
+//  YMCA.h
+//  YMC Analytics Library
+//
+//  Created by William Guan on 2013-05-09.
+//  Copyright (c) 2013 YMC Network. All rights reserved.
+//
+
+/*
+    Reserved events keywords: YA0init,YA0charge,YA0token
+    TODO: YA0id, YA0time or YA0:{}
+
+    Or, turn them into another field , like
+        YAP:{token:..., time:..., ...}
+
+
+ ## event name
+
+ YA0start	: session start (temporary, can be replaced by YA0session)
+ YA0charge	: payment
+ YA0session	: session info: start time, end time, length (write it at app exiting)
+
+
+ ## properties
+
+ YA0token	: ymc_id
+ YA0time	: Unix timestamp
+ YA0uid		: User ID
+ YA0ip		: Client IP
+
+
+
+ ## reserved name for mixpanel
+
+ token
+ time
+ ip
+ distinct_id
+
+ */
+
+
+#include <stdio.h>
+#include <time.h>
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+
+#include "YMCA.h"
+#include "cJSON.h"
+#include "base64.h"
+#include "ymccore.h"
+#include "ymc_settings.h"
+#include "uuid.h"
+#include "ymc_tapstreamIntegration.h"
+#include "ymc_crashreport.h"
+
+// TODO: Below should be an iOS check, but the current build script does not set the typical #defines for C compilation units
+#ifndef __ANDROID_API__
+    #include "ymc_iosAppOb.h"
+#endif
+
+#ifdef __ANDROID_API__
+    #include <android/log.h>
+#endif
+
+#define VERSION "1.0.6"
+
+#define MAX_TOKEN_SIZE 128
+#define MAX_UID_SIZE 128
+
+#define MAX_PATH 256
+#define MAX_SETTINGS_FILE_LENGTH 512
+
+#define YMC_DEBUG_MODE 1
+
+#if YMC_DEBUG_MODE == 1
+    #ifdef __ANDROID_API__
+        #define YMC_DEBUG_PRINT(fmt, args...) __android_log_print(ANDROID_LOG_DEBUG, "LOG_TAG", fmt, ## args)
+    #else
+        #define YMC_DEBUG_PRINT(fmt, args...) printf(fmt, ## args)
+    #endif
+#else
+    #define YMC_DEBUG_PRINT(fmt, args...)
+#endif
+
+#define URI_DEBUG "http://192.168.1.57/track"
+#define URI_PRODUCTION "http://192.168.1.57/track"
+
+
+static const char* k_UUIDKey = "uuid";
+static const char* k_BornFlagKey = "born";
+
+static char yaApiToken[MAX_TOKEN_SIZE];
+static char uuid[MAX_UID_SIZE];
+static char userid[MAX_UID_SIZE];
+static int sessionStartTime;
+
+static int liveBuild; // 0 for false, 1 for true
+
+void yaIdentifyInternal(const char *userID){
+    strlcpy(uuid, userID, MAX_UID_SIZE);
+
+    /* TODO
+     * Store the userID to local storage , so next time init will read it.
+     * http://stackoverflow.com/questions/8138171/writing-and-accessing-app-files-on-ios-devices
+     */
+
+    YMC_DEBUG_PRINT("UUID : %s\n\n",uuid);
+}
+
+void yaInit(const char *token)
+{
+    liveBuild = 1;
+
+    strlcpy(yaApiToken, token, MAX_TOKEN_SIZE);
+    YMCInit ymcInitOpts;
+    YMCResult res = ymc_init(&ymcInitOpts);
+    printf("Set Token : %s\n%d\n",yaApiToken,res);
+
+    YMCResult settingsResult = ymc_settings_init();
+    assert( settingsResult == SUCCESS );
+
+    char* uuidStr = NULL;
+    if( ymc_settings_get_str( &uuidStr, k_UUIDKey ) == SUCCESS )
+    {
+        assert( uuidStr != NULL );
+        assert( strlen( uuidStr ) > 0 );
+
+        yaIdentifyInternal( uuidStr );
+    }
+    else
+    {
+        uuid_t uuid;
+        uuid_generate( uuid );
+
+        YMC_DEBUG_PRINT( "Length of UUID string: %ld\n", sizeof(UUID_FMT_DEFAULT)/sizeof(char) );
+
+        char uuidStr[sizeof(UUID_FMT_DEFAULT)/sizeof(char)];
+        uuid_unparse( uuid, uuidStr );
+
+        YMC_DEBUG_PRINT( "Generated UUID: %s\n", uuidStr );
+
+        yaIdentifyInternal( uuidStr );
+
+        ymc_settings_set_str( k_UUIDKey, uuidStr );
+
+        ymc_settings_commit();
+        YMC_DEBUG_PRINT( "Wrote settings file contents\n" );
+    }
+
+    // Find out if we are running a dev or ad-hoc build, and set liveBuild to 0 if we are.
+#ifndef __ANDROID_API__
+    liveBuild = ymc_islivebuild();
+#endif
+
+    // TODO: Fix this (see above usage for notes)
+#ifndef __ANDROID_API__
+    ymc_setupSessionHooks();
+#endif
+
+#ifdef TAPSTREAM_ENABLED
+    initializeTapstream();
+#endif
+
+    char* bornFlag = NULL;
+    if( ymc_settings_get_str( &bornFlag, k_BornFlagKey ) != SUCCESS )
+    {
+        ymc_settings_set_str( k_BornFlagKey, "true" );
+        ymc_settings_commit();
+
+        // one-time event to track install
+        yaEvent* eventBirth = yaEventCreate("YA0birth");
+        yaTrack( eventBirth );
+    }
+
+    ymc_settings_close();
+
+    YMC_DEBUG_PRINT( "Cleaned up\n" );
+
+    /* TODO List
+     * 1. try to read the stored uid
+     * 2. if uid doesn't exist, create one UUID based on device and store it.
+     * 3. call yaSessionStart()
+     *
+     * Problem:
+     * UID will be changed when yaIdentify is called, that will make 2 different user
+     */
+
+    yaSessionStart();
+
+    ymc_crashreport_init();
+};
+
+void yaIdentify(const char *userID){
+
+    strlcpy(userid, userID, MAX_UID_SIZE);
+
+    YMC_DEBUG_PRINT("UserID : %s\n\n", userID);
+}
+
+yaEvent *yaEventCreate(const char *name) {
+    assert(name!=NULL);
+
+    cJSON *event,*properties;
+
+    event=cJSON_CreateObject();
+    cJSON_AddStringToObject(event,"event",name);
+	cJSON_AddItemToObject(event,"properties", properties=cJSON_CreateObject());
+
+    cJSON_AddStringToObject(properties,"distinct_id", uuid != NULL ? uuid : "null");
+    cJSON_AddStringToObject(properties,"uid", userid != NULL ? userid : "null");
+    cJSON_AddNumberToObject(properties, "YA0debug", liveBuild == 0 ? 1 : 0 );
+
+    return event;
+};
+
+void yaAddNumber(yaEvent *event,const char*key,double value){
+    assert(event!=NULL);
+    assert(key!=NULL);
+    cJSON *properties = cJSON_GetObjectItem(event,"properties");
+    cJSON_AddNumberToObject(properties,key,value);
+};
+
+void yaAddString(yaEvent *event,const char *key,const char *value){
+    assert(event!=NULL);
+    assert(key!=NULL);
+    cJSON *properties = cJSON_GetObjectItem(event,"properties");
+    cJSON_AddStringToObject(properties,key,value);
+};
+
+void ymca_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+    printf("YMCA Response : %s\n", ptr);
+
+};
+
+void yaTrack(yaEvent *event){
+
+//    char *token = yaGetToken();
+//    yaGetToken(&token);
+//    printf("Got token : %s\n\n",token);
+
+    printf("Track Event : %s\n",cJSON_GetObjectItem(event, "event")->valuestring);
+
+#ifdef TAPSTREAM_ENABLED
+    postTapstreamEvent(event);
+#endif
+
+    yaAddString(event, "YA0ver", VERSION);
+    yaAddString(event, "YA0token", yaApiToken);
+    yaAddNumber(event,"time",(int)time(NULL));
+
+    char *eventStr;
+    eventStr=cJSON_Print(event);
+
+    YMC_DEBUG_PRINT("%s\n",eventStr);
+
+    uint8_t *eventB64 = malloc(b64_encoded_size(strlen(eventStr))+1);
+    size_t size = b64_encode(eventB64, (uint8_t *)eventStr, strlen(eventStr));
+    eventB64[size] = '\0';
+
+//    printf("base64: \n%s\n\n", eventB64);
+
+    size_t b64Len = strlen((char*)eventB64);
+//    printf("Base64 Length: \n%zd\n\n", b64Len);
+
+    char* encodedStr = ymc_urlencode( (char*)eventB64, b64Len );
+
+    size_t encodedLen = strlen( encodedStr );
+
+    char req[encodedLen+10];
+    strcpy(req, "data=");
+    strcat(req,encodedStr);
+
+    ymc_urlencode_free( encodedStr );
+    encodedStr = NULL;
+
+//    strcat(req,"&verbose=1");
+//    printf("Req:%s\n",req);
+
+    char *uri;
+#if (YMC_DEBUG_MODE)
+    uri = URI_DEBUG;
+#else
+    uri = URI_PRODUCTION;
+#endif
+
+    YMCResult res = ymc_send(uri,req,POST,ymca_callback, NULL);
+
+    cJSON_Delete(event);
+    free(eventStr);
+    free(eventB64);
+};
+
+/*
+ * =================== A D D I T I O N A L   F U N C T I O N S ================
+ */
+
+/* TODO: to provide:
+ * 1) enum('RMB','USD",...); yaCharge(...);
+ * 2) customized currency, yaCCharge(char *currency, double value);
+ */
+
+void yaCharge(const char *currency, double value) {
+    yaEvent *eventCharge = yaEventCreate("YA0charge");
+    yaAddNumber(eventCharge, "amount", value);
+    yaAddString(eventCharge, "currency", currency);
+    yaTrack(eventCharge);
+}
+
+
+
+void yaSessionStart(){
+    sessionStartTime = (int)time(NULL);
+
+    // temporary event, eventually be replaced by session event
+    yaEvent *eventSessionStart = yaEventCreate("YA0start");
+    yaTrack(eventSessionStart);
+
+}
+
+void yaSessionEnd(){
+    int sessionEndTime = (int)time(NULL);
+
+    yaEvent *eventSession = yaEventCreate("YA0session");
+    yaAddNumber(eventSession, "start", sessionStartTime);
+    yaAddNumber(eventSession, "end", sessionEndTime);
+    yaAddNumber(eventSession, "length", (sessionEndTime-sessionStartTime));
+    yaTrack(eventSession);
+}
+
+
+void yaRegister(const char *userID){
+    yaIdentify(userID);
+    yaEvent *evt = yaEventCreate("YA0register");
+    yaTrack(evt);
+}
+
+void yaLogin(const char *userID){
+    yaIdentify(userID);
+    yaEvent *evt = yaEventCreate("YA0login");
+    yaTrack(evt);
+}
+
+
+/*
+static void *(*yaEvent_malloc)(size_t sz) = malloc;
+static void (*yaEvent_free)(void *ptr) = free;
+static void suffix_object(yaEvent *prev,yaEvent *item) {prev->next=item;}
+
+static char* yaEvent_strdup(const char* str)
+{
+    size_t len;
+    char* copy;
+    len = strlen(str) + 1;
+    if (!(copy = (char*)yaEvent_malloc(len))) return 0;
+    memcpy(copy,str,len);
+    return copy;
+}
+
+void   ya_AddItemToArray(yaEvent *array, yaEvent *item) {
+    yaEvent *c=array->next;
+    if (!item) return;
+    if (!c) {array->next=item;}
+    else {
+        while (c && c->next) c=c->next;
+        suffix_object(c,item);
+    }
+}
+
+void yaAddItemToObject(yaEvent *object,const char *key,yaEvent *item)	{
+	if (!item) return;
+    if (item->key) yaEvent_free(item->key);
+    item->key = yaEvent_strdup(key);
+    ya_AddItemToArray(object,item);
+}
+*/
+
+

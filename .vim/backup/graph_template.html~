@@ -1,0 +1,24 @@
+<div id="myChart">
+    <svg style="height:400px"></svg>
+</div>
+
+<div class="data-list">
+    <div class="table-headers">
+        <div class="pull-left">{{language+'.charts.table_date_header' | translate}}</div>
+        <div class="pull-right">{{getDataKey()}}</div>
+        <div class="clearfix"></div>
+    </div>
+
+    <div class="table-holder">
+        <table class="table table-striped">
+
+            <tbody>
+
+            <tr ng-repeat="line in rawData">
+                <td>{{line[0] | date:'MMM dd yyyy'}}</td>
+                <td>{{line[1]}}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

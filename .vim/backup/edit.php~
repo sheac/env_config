@@ -1,0 +1,91 @@
+<ul class='sub-menu'>
+    <li class='bodytext'><?php echo HTML::anchor(Path::admin_games(), HTML::image(Path::image('refresh.png')).' '. __('Back to All Games'), array()) ?></li>
+</ul>
+
+<div class='clear'></div>
+<div class='hr'></div>
+
+<div class='box3 gradient'>
+    <div class="toptexture"></div>
+
+    <p class='heading'><?php echo HTML::chars(UTF8::clean($game->developer->name." | ".$game->title)) ?></p>
+    <p class='subheading'><?php echo __("ADMIN") ?></p>
+
+    <?php echo View::factory('shared/_validation')->set('model', array($game,$contacts[0],$contacts[1]))->set('errors',$errors) ?>
+
+<?php echo $user->is_admin(); ?>
+
+    <div id="tabs">
+        <ul>
+            <li><?php echo HTML::anchor('#game', __("GAME"), array('class' => 'bodynav') ) ?></li>
+            <li><?php echo HTML::anchor('#provision', __("PROVISIONING"), array('class' => 'bodynav') ) ?></li>
+            <li><?php echo HTML::anchor('#production', __("PRODUCTION"), array('class' => 'bodynav') ) ?></li>
+            <li><?php echo HTML::anchor('#server', __("SERVER"), array('class' => 'bodynav') ) ?></li>
+            <li><?php echo HTML::anchor('#in_app_purchases',__('IN-APP PURCHASES'),array('class' => 'bodynav')) ;?></li>
+            <li><?php echo HTML::anchor('#achievements',__('ACHIEVEMENTS'),array('class'=>'bodynav'));?></li>
+            <li><?php echo HTML::anchor('#analytics',__('ANALYTICS'),array('class'=>'bodynav')); ?></li>
+            <li><?php echo HTML::anchor('#platforms', __("PLATFORM"), array('class' => 'bodynav') ) ?></li>
+        </ul>
+
+        <div id="game">
+            <?php echo View::factory('admin/games/_game_form')
+                                    ->set('game', $game)
+                                    ->set('contacts',$contacts) ?>
+        </div>
+        <div id="provision">
+            <?php echo View::factory('admin/games/_provisioning_form')
+                                    ->set('game', $game) ?>
+        </div>
+        <div id="production">
+            <?php echo View::factory('admin/games/_files_index')
+                                ->set('game', $game)
+                                ->set('files',$files)
+                                ->set('log_records',$log_records);  ?>
+        </div>
+
+        <div id="server">
+            <?php echo View::factory('games/_shared_server_forms')
+                ->set('servers',$servers)
+                ->set('game',$game); ?>
+        </div>
+
+
+        <div id='in_app_purchases'>
+            <?php echo View::factory('games/_iap_index')
+                ->set('game',$game); ?>
+        </div>
+        <div id="achievements">
+            <?php echo View::factory('games/_achievements_index')
+                ->set('game',$game); ?>
+        </div>
+        <div id="analytics">
+            <?php echo View::factory('games/_analytics')
+                ->set('game',$game); ?>
+        </div>
+        <div id='platforms'>
+            <?php echo View::factory('platforms/_shared_top')
+                ->set('game',$game); ?>
+
+        </div>
+    </div>
+
+
+    <div class="bottomtexture"></div>
+</div>
+
+
+
+<script>
+    $(document).ready(function(){
+        $('#tabs').tabs({
+            active: $.cookie("tab"),
+            activate: function( event, ui ) {
+                $.cookie("tab", ui.newTab.index());
+            }
+        });
+
+        setTimeout(function(){
+            $('div.notice').slideUp({duration: 400});
+        },3000);
+    });
+</script>

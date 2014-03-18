@@ -1,0 +1,56 @@
+<?php
+class add_achievement_items{
+    public static function up(){
+        $achievements = "CREATE TABLE achievements (
+                    id INTEGER NOT NULL AUTO_INCREMENT,
+                    game_id INTEGER NOT NULL,
+                    reference_name VARCHAR(255) DEFAULT NULL,
+                    PRIMARY KEY (id),
+                    FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+                    );";
+        $iOS = "CREATE TABLE achievements_iOS_port(
+                    id INTEGER NOT NULL AUTO_INCREMENT,
+                    pid INTEGER NOT NULL,
+                    achievement_id VARCHAR(100) NOT NULL,
+                    points INTEGER DEFAULT NULL,
+                    initial_status INTEGER DEFAULT NULL,
+                    multiple_times TINYINT(1) DEFAULT NULL,
+                    PRIMARY KEY (id),
+                    FOREIGN KEY (pid) REFERENCES achievements(id) ON DELETE CASCADE
+                    );";
+        $android = "CREATE TABLE achievements_android_port(
+                    id INTEGER NOT NULL AUTO_INCREMENT,
+                    incremental TINYINT(1) DEFAULT NULL,
+                    incremental_steps INTEGER DEFAULT NULL,
+                    points INTEGER DEFAULT NULL,
+                    initial_status INTEGER DEFAULT NULL,
+                    screenshot VARCHAR(255) DEFAULT NULL,
+                    ordering INTEGER DEFAULT NULL,
+                    PRIMARY KEY (id),
+                    FOREIGN KEY (pid) REFERENCES achievements(id) ON DELETE CASCADE
+                    );";
+        $i18n = "CREATE TABLE achievements_i18n(
+                    id INTEGER NOT NULL AUTO_INCREMENT,
+                    pid INTEGER NOT NULL,
+                    lang INTEGER DEFAULT NULL,
+                    general_desc VARCHAR(500) DEFAULT NULL,
+                    display_name VARCHAR(100) DEFAULT NULL,
+                    display_pre_earn VARCHAR(255) DEFAULT NULL,
+                    display_post_earn VARCHAR(255) DEFAULT NULL,
+                    image VARCHAR (255) DEFAULT NULL,
+                    PRIMARY KEY (id),
+                    FOREIGN KEY (pid) REFERENCES achievements(id) ON DELETE CASCADE
+                    );";
+        DB::query(null,$achievements)->execute();
+        DB::query(null,$iOS)->execute();
+        DB::query(null,$android)->execute();
+        DB::query(null,$i18n)->execute();
+    }
+    public static function down(){
+        DB::query(null,"DROP TABLE achievements_i18n")->execute();
+        DB::query(null,"DROP TABLE achievements_android_port")->execute();
+        DB::query(null,"DROP TABLE achievements_iOS_port")->execute();
+        DB::query(null,"DROP TABLE achievements")->execute();
+
+    }
+}

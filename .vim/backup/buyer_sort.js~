@@ -1,0 +1,182 @@
+var database = require('../database');
+var utime = require('../lib/utime').getTimePoint
+var fillGap = require('../lib/utime').fillGap
+
+var YmcaLogger = require('../../tools/logging/ymca-logger'),
+    ymcaLogger = new YmcaLogger(['AggregationController-SortedBuyers']);
+
+// API:  /revenue/:type
+exports.api = function(req,res){
+
+    var type = req.query.type;
+    var ymc_id = req.query.token;
+    var isNew = req.query.first;
+    var timezone = req.query.timezone;
+    var collection = database.collectionFromName(req.query.collection_name);
+//    ymcaLogger.log("req.query.first=",req.query.first);
+
+//    var type = req.params.type;
+
+    ymcaLogger.log({
+        type: type,
+        collection: req.query.collection_name,
+        ymc_id: ymc_id
+    });
+
+    var startTime,endTime,
+        group={};
+//    endDay = new Date();
+//
+//    if (type == 'debug') {
+//        eventCollection.aggregate(
+//            [{
+//                $match: {
+//                    event: 'YA0charge',
+//                    "properties.time": {"$gte": new Date("5 1 2013"), "$lt":endDay}
+//                }
+//            }],function(err,result){
+//                ymcaLogger.log(result);
+//                res.send(result);
+//            });
+//
+//    } else if (type == 'day') {
+////        firstDay = new Date((lastDay.getMonth())+" "+(lastDay.getDate()+0)+" "+lastDay.getFullYear());
+//        startDay = new Date(endDay - 30 *24*60*60*1000);
+//        group = {indexOfTime:{$dayOfYear : "$properties.time"},userid: "$properties.distinct_id"};
+//
+//
+//    } else if (type == 'week') {
+//        var period = 7 * 24;    // 24 weeks
+//        startDay  = new Date(endDay - period *24*60*60*1000);
+//        group = {indexOfTime:{$week : "$properties.time"},userid: "$properties.distinct_id"};
+//    } else if (type == 'month') {
+//        startDay  = new Date(endDay - 365 *24*60*60*1000);
+//        group = {indexOfTime:{$month : "$properties.time"},userid: "$properties.distinct_id"};
+//    }
+
+
+
+    var result = utime[type](null, null, timezone)
+    ymcaLogger.log({result:result})
+
+    startTime = result.from_time
+    endTime = result.to_time
+    group = result.group
+
+    if (result.error){
+        res.send({error:result.error})
+    } else {
+        ymcaLogger.log('lastDay:',endTime);
+        ymcaLogger.log('firstDay:',startTime);
+
+        if (isNew==1) {
+            ymcaLogger.log("new buyer");
+            collection.aggregate([
+                {
+                    $match:{"event":"YA0charge"}
+                },
+                {
+                    $group:{
+                        _id:"$properties.distinct_id",
+                        transaction: {$sum: 1}
+                    }
+                },{
+                    $match:{"transaction":1}
+                },
+                {
+                    $group:{
+                        _id:null,
+                        buyer:{$addToSet:"$_id"}
+                    }
+                }],function(err,result){
+                    /* NOTE:
+                       The system appears to choke if 'results' is empty.
+                       I'm not really going to fix this, aside from ensuring that
+                       the server actually sends back a response, since the "new buyer"
+                       query doesn't seem to match the usual definition of what a new
+                       buyer is
+                    */
+                    var newBuyer = result.length > 0 ?
+                                    result[0].buyer :
+                                    [];
+//            ymcaLogger.log(newBuyer);
+                    getBuyerAgg(newBuyer);
+            })
+        } else {
+            ymcaLogger.log("repeated buyer");
+            collection.aggregate([
+                {
+                    $match:{"event":"YA0charge"}
+                },
+                {
+                    $group:{
+                        _id:"$properties.distinct_id",
+                        transaction: {$sum: 1}
+                    }
+                },{
+                    $match:{"transaction":{$gt:1}}
+                },
+                {
+                    $group:{
+                        _id:null,
+                        buyer:{$addToSet:"$_id"}
+                    }
+                }],function(err,result){
+                    /* NOTE:
+                       The system appears to choke if 'results' is empty.
+                       I'm not really going to fix this, aside from ensuring that
+                       the server actually sends back a response, since the "repeated buyer"
+                       query doesn't seem to match the usual definition of what a repeat
+                       buyer is
+                    */
+                    var newBuyer = result.length > 0 ?
+                                    result[0].buyer :
+                                    [];
+//            ymcaLogger.log(newBuyer);
+                    getBuyerAgg(newBuyer);
+            })
+        }
+    }
+
+    function getBuyerAgg(newBuyer){
+
+        var matchQuery = {
+                    "properties.YA0token":ymc_id,
+                    event: 'YA0charge',
+                    'properties.distinct_id': {$in: newBuyer}
+                };
+        switch(timezone) {
+            case "GMT":
+                matchQuery['properties.time'] = {"$gte": startTime, "$lt": endTime}
+                break;
+            case "pacific":
+                matchQuery['properties.time_pacific'] = {"$gte": startTime, "$lt": endTime}
+                break;
+        }
+        
+        collection.aggregate(
+            [{
+                $match: matchQuery
+            },{ // this group only work for repeated buyers, for new buyers is useless.
+                $group:{
+                    _id:group,
+                    revenue:{$sum:"$properties.amount"}
+                }
+            },{
+                $group:{
+//                    _id:"$_id.indexOfTime",
+                    _id:{y:"$_id.year",t:"$_id.indexOfTime"},
+                    buyer: {$sum: 1 },
+                    revenue:{$sum:"$revenue"}
+                }
+            },{
+                $sort:{_id:1}
+            }],
+            function(err,result){
+                ymcaLogger.log({result:result})
+                var result2 = fillGap(startTime,endTime,type,result)
+                res.send(result2);
+            });
+    }
+
+};

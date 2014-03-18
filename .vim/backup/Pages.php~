@@ -1,0 +1,45 @@
+<?php defined('SYSPATH') or die('No direct script access.');
+
+class Controller_Pages extends Controller_Base {
+
+    /*
+    */
+    public function action_index()
+    {
+        View::set_global('title', "YMC GAMES");
+
+        $content = View::factory('index');
+        $response = View::factory('layout/index')->set('content', $content);
+        $this->response->body($response);
+    }
+
+    /*
+    */
+    public function action_terms()
+    {
+        View::set_global('title', "TERMS OF SERVICE AND PRIVACY POLICY");
+        $content = View::factory('privacypolicy');
+        $response = View::factory('layout/default')->set('content', $content);
+        $this->response->body($response);
+    }
+
+    /*
+    */
+    public function action_support()
+    {
+        View::set_global('title', "YMC GAMES - Contact Us");
+        $content = View::factory('support');
+        $response = View::factory('layout/default')->set('content', $content);
+        $this->response->body($response);
+    }
+
+    /*
+    */
+    public function action_media()
+    {
+        View::set_global('title', "YMC GAMES - Media Center");
+        $content = View::factory('media');
+        $response = View::factory('layout/default')->set('content', $content);
+        $this->response->body($response);
+    }
+} // End Welcome

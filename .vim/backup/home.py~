@@ -1,0 +1,92 @@
+from django.http import HttpResponse, HttpResponseRedirect
+
+from django.shortcuts import render
+from django.conf import settings
+
+from django import forms
+from django.forms import ModelForm, CharField, PasswordInput
+from django.core.validators import EmailValidator
+from django.db import models
+
+from ymc.model.users import User
+from ymc.lib import authentication as ApiAuthentication
+from ymc_platform import settings
+
+from app import path
+from app import session
+from app.session import force_login
+from app import views_helpers
+from app.views_helpers import build_template_vars
+
+
+"""
+# Model User Form
+"""
+class UserForm(forms.Form):
+    email = CharField(
+        label='Email',
+        validators=[EmailValidator()],
+        required=True,
+        error_messages={'required': 'Please enter a valid email address'}
+    )
+    password = CharField(
+        label='Password',
+        widget=PasswordInput(),
+        required=True,
+        error_messages={'required': 'Please enter your password'}
+    )
+
+"""
+#
+"""
+@force_login
+def home(request):
+    template_vars = build_template_vars(request)
+    template_vars['publisher_id'] = request.session.get('publisher_id', None),
+
+    return render(request, 'admin/home.html', template_vars)
+
+"""
+#
+"""
+def login(request):
+
+    form = UserForm()
+
+    if(request.method == 'POST'):
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+
+        form = UserForm(request.POST)
+        if(form.is_valid()):
+            user = User.findByEmail(email)
+            # If no user found...
+            if (user is not None):
+                # Validate user login
+                result = ApiAuthentication.ValidateAdminOrPublisher(user, password)
+
+                if(result != False):
+                    if(not user.IsTokenValid()):
+                        user.CreateAccessToken()
+                    request.session[settings.SESSION_COOKIE_NAME] = user.access_token
+                    request.session['is_admin'] = user.is_admin
+                    request.session['publisher_id'] = user.publisher_id
+                    user.login()
+                    return HttpResponseRedirect(path.admin_home())
+                else:
+                    form.errors['__all__'] =  form.error_class(["Oops! email and/or password are not valid."])
+            else:
+                    print form.errors
+                    form.errors['__all__'] =  form.error_class(["Oops! email and/or password are not valid."])
+
+
+    return render(request, 'admin/login.html', {'form': form, 'post_action': path.admin_login()})
+
+"""
+#
+"""
+def logout(request):
+    if(session.is_logged_in(request)) :
+        del request.session[settings.SESSION_COOKIE_NAME]
+    return HttpResponseRedirect(path.admin_home())
+

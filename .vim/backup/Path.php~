@@ -1,0 +1,284 @@
+<?php
+
+class Path {
+
+    /*
+    */
+    static public function base_url(){ return "http://".$_SERVER['HTTP_HOST']; }
+    static public function root(){ return "/"; }
+    static public function ymca_url($user, $game)
+    {
+        if ($user->is_publisher()) {
+            $role = 'publisher';
+            $rid = $user->publisher_id;
+        } else {
+            $role = 'developer';
+            $rid = $user->developer_id;
+        }
+        $query = array(
+            'gid' => $game->ymc_id,
+            'token' => $user->access_token,
+            'rid' => $rid,
+            'uid' => $user->uid,
+            'is_admin' => $user->is_admin(),
+            'role' => $role,
+        );
+
+        return "http://ya.ymcnetwork.com/iframer?".http_build_query($query);
+        //return "http://192.168.1.54:2000/iframer?".http_build_query($query);
+
+    }
+
+
+    /*
+    */
+    static public function image($file){ return "images/$file"; }
+    static public function style($file){ return "css/$file"; }
+    static public function script($file){ return "js/$file"; }
+    static public function video($file){ return "/videos/$file"; }
+    static public function sdk($file){ return "sdk/$file"; }
+    static public function file($file) {return "fileshare/$file";}
+    static public function tmp($file) {return "fileshare/tmp/$file";}
+
+    static public function ios_iap_screenshots($file) {return "ios_iap_screenshots/$file"; }
+    static public function achievement_icons_folder($file) {return "achievements/$file";}
+
+    static public function fileshare_dir() {return DOCROOT."fileshare/";}
+    static public function plist($file) {return "plists/$file";}
+    static public function reports($file) { return "reports/$file";} //note: this folder should contain PDFs ONLY
+
+
+    static public function provision($file){ return "provision/$file"; }
+    static public function server_file($file){return "server_file/$file"; }
+    static public function assets($file){ return "assets/$file"; }
+
+    /*
+    */
+    static public function about() { return '/about'; }
+    static public function contact() { return '/contact'; }
+    static public function contact_confirm() { return '/contact_confirm'; }
+    static public function privacy() {return '/privacy';}
+    static public function terms() {return '/terms';}
+    static public function restrict_access(){return '/restrict_access';}
+    static public function ie() {return '/ie';}
+
+    static public function ymc_corporate() { return 'http://ymcnetwork.com'; }
+
+    /*
+     *  TRC PATH
+     */
+    static public function trc($id) {return '/trc/' . $id; }
+
+
+    /*
+        USERS PATHS
+    */
+    static public function users(){ return "/users"; }
+    static public function users_view_self() { return "/users/view/";}
+    static public function users_ajax_login(){ return "/users/ajaxlogin"; }
+    static public function users_ajax_logout(){ return "/users/ajaxlogout"; }
+    static public function users_change_language($lang){ return "/users/change_language/" . $lang; }
+    static public function users_signup() { return "/users/signup"; }
+    static public function users_login() { return "/users/login"; }
+    static public function users_verify($user_developer, $developer_name)
+    {
+        $params = array(
+            'd' => $developer_name,
+            't' => $user_developer->verify_token,
+        );
+        return self::base_url()."/users/verify?".http_build_query($params);
+    }
+    static public function users_forgot() {return "/users/forgot"; }
+    static public function users_reset() {return "/users/reset";}
+
+
+
+    /*
+        GAMES PATHS
+    */
+    static public function games_show_all(){ return "/games/showAll"; }
+    static public function games_show($id){ return "/games/show/$id"; }
+    static public function games_new($developer_id){ return "/games/new/$developer_id"; }
+    static public function games_provision($id) { return "/games/provision_download/" . $id ; }
+    static public function games_server_file($id) {return "/games/server_file_download/" . $id ;}
+    static public function games_provisioning_file($ymc_id,$type) {return "/games/provision_download/$ymc_id?type=$type"  ;}
+
+    /*
+        SDK PATHS
+    */
+    static public function sdk_index() {return "/sdks/";}
+    static public function sdk_download($id){ return "/sdks/download/$id";}
+
+    static public function docsdk_index() {return "/SDKDocs/";}
+
+
+    /*
+     *  YMC Branding kit
+     */
+    static public function branding_index() { return "/SDKDocs/branding/"; }
+
+
+    /*
+        DOCUMENTATION PATHS
+    */
+    static public function documentation($id) { return "/docs/index/$id"; }
+    static public function documentation_specific($id) { return "/docs/index/$id";}
+    static public function documentation_show($id){ return "/docs/show/$id"; }
+
+
+    /*
+     *  SERVER PATHS
+     */
+    static public function servers_new($game_id) { return "/servers/new?gid=$game_id";}
+    static public function servers_show($id){ return "/servers/show/$id";}
+    static public function servers_edit($id) { return "/servers/edit/$id";}
+    static public function servers_delete($id) { return "/servers/delete/$id";}
+    static public function servers_get_key($id) { return "/servers/show/$id?get_key";}
+
+    /*
+        FILES PATHS
+    */
+    static public function files_new($game_id){ return "/files/new?gid=$game_id"; }
+    static public function files_download($id){ return "/files/download/$id"; }
+    static public function files_upload($id) { return "/files/upload/$id"; }
+    static public function files_ajax_edit($id){ return "/files/ajaxedit/$id"; }
+    static public function files_ajax_upload(){ return "/files/ajaxupload"; }
+    static public function files_dropzone(){ return "/files/dropzone"; }
+
+    /*
+     *  IAP PATHS
+     */
+
+    static public function IAP_new($game_id){ return "/IAP/new?gid=$game_id"; }
+    static public function IAP_show($id){ return "/IAP/show/$id";}
+    static public function IAP_edit($id){ return "/IAP/edit/$id"; }
+    static public function IAP_delete($id) {return "/IAP/delete/$id";}
+
+
+    /*
+     * ACHIEVEMENT PATHS
+     */
+    static public function achievements_new($game_id) { return "/achievements/new?gid=$game_id";}
+    static public function achievements_edit($id) {return "/achievements/edit/$id";}
+    static public function achievements_show($id) {return "/achievements/show/$id";}
+    static public function achievements_delete($id) {return "/achievements/delete/$id";}
+
+    static public function achievements_i18n_add($achievement_id) { return "/achievements/i18n_add?achievement_id=$achievement_id";}
+    static public function achievements_i18n_edit($id) {return "/achievements/i18n_edit/$id";}
+    static public function achievements_i18n_delete($id) { return "/achievements/i18n_delete/$id";}
+
+
+
+
+    /*
+        ADMIN SDK PATHS
+    */
+    static public function admin_sdks(){ return "/admin/sdks";}
+    static public function admin_sdks_new(){ return "/admin/sdks/new";}
+    static public function admin_sdks_delete($id){ return "/admin/sdks/delete/$id";}
+    static public function admin_sdks_edit($id){ return "/admin/sdks/edit/$id";}
+
+
+    /*
+        SDK DOCUMENTATION PATHS
+    */
+    static public function admin_documentation(){ return "/admin/docs";}
+
+
+
+    static public function admin_documentation_new() {return "/admin/docs/new/";}
+    static public function admin_documentation_edit($doc_id) {return "/admin/docs/edit/" . $doc_id ;}
+    static public function admin_documentation_delete($doc_id) {return "/admin/docs/delete/" . $doc_id;}
+
+    /*
+        ADMIN GAMES PATHS
+    */
+    static public function admin_games(){ return "/admin/games";}
+    static public function admin_games_edit($id){ return "/admin/games/edit/$id";}
+    static public function admin_delete_game($id){ return "/admin/games/delete/$id";}
+
+
+    /*
+        ADMIN FILES PATHS
+    */
+    static public function publisher_files_ajax_show($id){ return "/publisher/files/ajaxshow/$id"; }
+    static public function publisher_files_edit($id){ return "/publisher/files/edit/$id"; }
+    static public function publisher_files_new($game_id){ return "/publisher/files/new?gid=$game_id"; }
+    static public function publisher_files_download($id){ return "/publisher/files/download/$id"; }
+    static public function publisher_files_upload($id) { return "/publisher/files/upload/$id"; }
+    static public function publisher_files_delete($id){ return "/publisher/files/delete/$id"; }
+    static public function publisher_files_delete_revision($id,$rid) { return "/publisher/files/ajax_revision_delete/$id?rid=$rid";}
+
+    static public function publisher_reports_new($game_id) { return "/publisher/reports/new?gid=$game_id";}
+    static public function publisher_reports_delete($id) { return "/publisher/reports/delete/$id";}
+
+
+    /*
+     * ASSETS
+     */
+
+
+
+    /*
+     * ADMIN CONTACTS PATHS
+     */
+    static public function admin_contacts() {return "/admin/contacts";}
+    static public function admin_contacts_new(){ return "/admin/contacts/new";}
+    static public function admin_contacts_edit($id){ return "/admin/contacts/edit/$id";}
+    static public function admin_contacts_delete($id){ return "/admin/contacts/delete/$id";}
+
+    /*
+     * ADMIN USERS
+     *
+     */
+    static public function admin_users() {return "/admin/users/";}
+    static public function admin_users_show($id) {return "/admin/users/view/$id";}
+    static public function admin_users_delete($id) {return "/admin/users/delete/$id";}
+    static public function admin_control_user_access() {return "/admin/users/access_control";}
+    static public function admin_reload_data($id) {return "/admin/users/reload/$id";}
+    static public function admin_groups() {return "/admin/groups";}
+    static public function admin_groups_edit($id,$type) {return "/admin/groups/edit/$id?group_type=$type";}
+
+
+    /*
+     * BUILD DISTRIBUTION
+     */
+
+    static public function build_index() {return "/build/";}
+    static public function plist_generate($id) {return "/build/create_plist/$id";}
+    static public function build_download($id) {return "/build/download/$id";}
+
+    /*
+     * ADMIN TASKS
+     */
+    static public function publisher_tasks_new($game_id)  {return "/publisher/tasks/new?gid=$game_id"; }
+    static public function publisher_tasks_edit($id)  {return "/publisher/tasks/edit/$id"; } //this might go ajax
+    static public function publisher_tasks_delete($id)  {return "/publisher/tasks/delete/$id"; }
+
+    /*
+     *
+     * Performance Report
+     */
+    static public function reports_popup($id) { return "/reports/popup/$id";}
+    static public function reports_view($id) { return "/reports/view/$id";}
+
+
+    /*
+     * TASKS
+     */
+    static public function tasks_show($id) {return "tasks/show/$id";}
+
+
+    /*
+     * Publisher Games
+     */
+
+    static public function publisher_games_edit($id){ return "/publisher/games/edit/$id";}
+    static public function publisher_accounts($id){return "/publisher/games/accounts/$id";}
+
+
+    /*
+     * Temp solution to goto dev site https
+     */
+    static public function https_login() {return "https://".$_SERVER['HTTP_HOST']."/users/login";}
+}

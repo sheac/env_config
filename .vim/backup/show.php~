@@ -1,0 +1,85 @@
+<script>
+    $(document).ready(function(){
+        $('#in_app_purchases').hide();
+    });
+
+
+</script>
+<ul class='sub-menu'>
+    <li class='bodytext'><?php echo HTML::anchor(Path::users(), HTML::image(Path::image('refresh.png')).' '. __('Back to All Games'), array()) ?></li>
+</ul>
+
+<div class='clear'></div>
+<div class='hr'></div>
+
+
+
+
+<div class='box3 gradient'>
+    <div class="toptexture"></div>
+    <p class='heading'><?php echo HTML::chars($game->title) ?></p>
+
+    <?php echo View::factory('shared/_validation')->set('model', $game) ?>
+
+    <div id="tabs">
+        <ul>
+            <li><?php echo HTML::anchor('#game', __("GAME"), array('class' => 'bodynav') ) ?></li>
+            <li><?php echo HTML::anchor('#provision', __("PROVISIONING"), array('class' => 'bodynav') ) ?></li>
+            <li><?php echo HTML::anchor('#production', __("PRODUCTION"), array('class' => 'bodynav') ) ?></li>
+            <li><?php echo HTML::anchor('#server', __("SERVER"), array('class' => 'bodynav') ) ?></li>
+            <li><?php echo HTML::anchor('#in_app_purchases',__('IN-APP PURCHASES'),array('class' => 'bodynav')) ;?></li>
+            <li><?php echo HTML::anchor('#analytics', __("ANALYTICS"), array('class' => 'bodynav') ) ?></li>
+        </ul>
+        <div id="game">
+            <?php echo View::factory('games/_game_form')->set('game', $game) ?> 
+        </div>
+
+        <div id="provision">
+            <?php echo View::factory('games/_provisioning_form')->set('game', $game) ?> 
+        </div>
+        <div id="production">
+
+                <?php echo View::factory('games/_files_index')
+                                ->set('game',$game)
+                                ->set('file_revisions', $file_revisions);
+                ?>
+            
+        </div>
+        <div id="server">
+            <?php echo View::factory('games/_shared_server_forms')
+                                ->set('servers',$servers)
+                                ->set('game',$game); ?>
+        </div>
+        <div id="analytics">
+            <?php echo View::factory('games/_analytics')
+                                ->set('game',$game); ?>
+        </div>
+
+        <div id='in_app_purchases'>
+            <?php echo View::factory('games/_iap_index')
+                                ->set('game',$game); ?>
+        </div>
+    <div class="bottomtexture"></div>
+
+
+</div>
+
+
+
+<script>
+    $(document).ready(function(){
+
+        $('#tabs').tabs({
+            active: $.cookie("tab"),
+            activate: function( event, ui ) {
+                $.cookie("tab", ui.newTab.index());
+            }
+        });
+
+        setTimeout(function(){
+            $('div.notice').slideUp({duration: 400});
+        },3000);
+
+    })
+</script>
+

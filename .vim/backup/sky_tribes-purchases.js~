@@ -1,0 +1,20 @@
+db.sdk_debug.find({
+    'properties.YA0token': '4b5b5c2e208811e3b5a722000a97015e',
+    event: 'YA0charge_X',
+    'properties.time_pacific': {$gte: new Date([2014, 02, 16])},
+}, {
+    'properties.amount': true,
+    'properties.currency': true,
+    'properties.distinct_id': true,
+    'properties.ip': true,
+    'properties.time': true,
+    'properties.time_pacific': true,
+    '_id': false,
+})
+
+db.sdk_debug.distinct(
+    'event',
+    {
+        'properties.YA0token': '4b5b5c2e208811e3b5a722000a97015e',
+        'properties.time_pacific': {$gte: new Date([2014, 02, 16])}
+    })

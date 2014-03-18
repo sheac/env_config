@@ -1,0 +1,28 @@
+var winston = require('winston');
+require('winston-loggly');
+
+var o1 = { subdomain: 'ymcnetwork.com',
+  auth:
+   { username: 'william@ymcnetwork.com',
+     password: 'ymc123123' },
+  inputToken: 'cbdca9c1-87bc-405c-bee2-64749c07bcf6',
+  tags: [ 'o1' ],
+  json: true,
+  token: 'cbdca9c1-87bc-405c-bee2-64749c07bcf6'
+};
+
+o2 = { subdomain: 'ymcnetwork.com',
+  auth:
+   { username: 'william@ymcnetwork.com',
+     password: 'ymc123123' },
+  inputToken: 'cbdca9c1-87bc-405c-bee2-64749c07bcf6',
+  tags: [ 'o2' ],
+  json: true,
+  token: 'cbdca9c1-87bc-405c-bee2-64749c07bcf6'
+};
+
+l1 = new w.Logger({transports: [new(w.transports.Loggly)(o1)]});
+l2 = new w.Logger({transports: [new(w.transports.Loggly)(o2)]});
+
+l1.info('hi!');
+l1.info('howdy!');

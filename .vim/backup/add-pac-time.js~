@@ -1,0 +1,144 @@
+var mongo = require('mongojs');
+var async = require('async');
+var moment = require('moment-timezone');
+var _ = require('underscore');
+
+var addPacificTimeToCollection = function(collection, gameId, topCallback) {
+
+    var _id2PacTimeList = [];
+
+    var errorHandler = function(err) {
+        if (typeof topCallback !== "undefined") {
+            topCallback(err);
+        } else {
+            throw err;
+        }
+    }
+
+    async.series({
+
+        populate_id2PacTime: function(callback) {
+
+            var queryHash = (gameId && typeof gameId !== "undefined") ?
+                                {"properties.YA0token": gameId} :
+                                {};
+                                
+            collection.find(queryHash).forEach(function(err, doc) {
+                if (err) { return errorHandler(err); }
+
+                if (!!doc) {
+                    var time = moment(doc.properties.time);
+                    var hoursToSubtract = time.isDST() ? 7: 8;
+                    var pacTime = time.subtract('hours', hoursToSubtract);
+                    _id2PacTimeList.push({_id: doc._id, pacTime: pacTime.toDate()});
+                } else {
+                    console.log("calling populate_id2PacTime callback");
+                    return callback();
+                }
+            });
+        },
+
+        addPacTimeToAll: function(callback) {
+            async.each(_id2PacTimeList, function(_id2PacTimeMap, eachCallback){
+                var _id         = _id2PacTimeMap['_id'],
+                    pacTime     = _id2PacTimeMap['pacTime'];
+
+                var updateHash = !!pacTime ?
+                        {$set: {"properties.time_pacific": pacTime}} :
+                        {
+                            $set: {
+                                "properties.time_pacific": 0,
+                            },
+                            $addToSet: {"properties.YA0error": "time_pacific"}
+                        };
+                                    
+                collection.findAndModify({
+                    query: {_id: _id},
+                    update: updateHash,
+                }, function(err, doc) {
+                    if (err) {return errorHandler(err); }
+                    eachCallback();
+                });
+            },
+            function(err){
+                if (err) { return errorHandler(err); }
+
+                console.log("calling addPacTimeToAll callback");
+                callback();
+            });
+        },
+    },
+        
+    function(err) {
+        if (err) { return errorHandler(err); }
+
+        if (topCallback && typeof topCallback !== "undefined") {
+            topCallback();
+        }
+    });
+}
+
+
+if (require.main === module) {
+    var events = require('../../reporter/database.js').eventCollection;
+    var sdkDebug = require('../../reporter/database.js').sdkDebugCollection;
+
+    var gameIds = [];
+    async.series([
+
+        function populateGameIdsFromEvents(populateGameIdsFromEventsCallback) {
+            console.log('getting gameIds from events');
+            events.distinct('properties.YA0token', function(err, ya0tokens) {
+                gameIds = _.union(gameIds, ya0tokens);
+                populateGameIdsFromEventsCallback();
+            });
+        },
+
+        function populateGameIdsFromSdkDebug(populateGameIdsFromSdkDebugCallback) {
+            console.log('getting gameIds from sdk_debug');
+            sdkDebug.distinct('properties.YA0token', function(err, ya0tokens) {
+                gameIds = _.union(gameIds, ya0tokens);
+                populateGameIdsFromSdkDebugCallback();
+            });
+        },
+
+        function announceGameIds(announceGameIdsCallback) {
+            console.log('gameIds:\n', gameIds, "\n");
+            announceGameIdsCallback();
+        },
+
+        function useGameIds(useGameIdsCallback) {
+            async.eachSeries(
+                gameIds,
+                function runOnParticularGame(gameId, runOnParticularGameCallback) {
+                    async.series({
+                        addToEvents: function(addToEventsCallback) {
+                            console.log('beginning on events collection for game: '+gameId);
+                            addPacificTimeToCollection(events, gameId, addToEventsCallback);
+                        },
+                        addToSdkDebug: function(addToSdkDebugCallback) {
+                            console.log('beginning on sdkDebug collection for game: '+gameId);
+                            addPacificTimeToCollection(sdkDebug, gameId, addToSdkDebugCallback);
+                        },
+                    },
+                    function(err) {
+                        if (err) { throw err; }
+                        runOnParticularGameCallback();
+                    });
+                },
+                function(err){
+                if (err) {throw err;}
+                useGameIdsCallback();
+            });
+        },
+    ],
+
+    function(err) {
+        console.log('all done!');
+        process.exit(0);
+    });
+
+} else {
+    exports.addPacificTimeToCollection = addPacificTimeToCollection;
+}
+

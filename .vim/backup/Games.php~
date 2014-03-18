@@ -1,0 +1,120 @@
+<?php defined('SYSPATH') or die('No direct script access.');
+
+class Controller_Admin_Games extends Controller_Admin_Base {
+
+    /*
+    */
+    public function action_index()
+    {
+
+        if ($this->request->method() == 'POST') {
+
+            $user = new Model_User();
+            $results = $user->admin_games();
+            $status = Arr::get($results, 'status');
+            if($status == 1) {
+                $response = Arr::get($results, 'response');
+
+                $games = Arr::get($response, 'games');
+                $developers = Arr::get($response, 'developers');
+                //var_dump($games); echo "<hr/>"; var_dump($developers); exit();
+                Model_Developer::update_all_developers($developers);
+                Model_Game::update_games($games);
+            }
+            $this->response->body(json_encode(array('status' => $status)));
+            return;
+        }
+
+        $games = ORM::factory('Game')
+                    ->join('developers','LEFT')
+                    ->on('game.developer_id','=','developers.id')
+                    ->order_by('developers.name','asc')
+                    ->order_by('game.title','asc')
+                    ->find_all();
+        $temps = array();
+        foreach($games as $game){
+            array_push($temps,array($game->primary_contact,$game->secondary_contact));
+        }
+
+
+
+        $content = View::factory('admin/games/index')
+                        ->set('games', $games);
+
+        $response = View::factory('layout/visitor')
+                        ->set('content', $content);
+
+        $this->response->body($response);
+    }
+
+
+    /*
+    */
+    public function action_edit()
+    {
+
+        $game_id = $this->request->param('id');
+        $upload_outcome = null;
+        $game = new Model_Game($game_id);
+        if( ! $game->loaded()) {
+            throw HTTP_Exception::factory(404, 'File not found!');
+        }
+        $servers = $game->servers->find_all();
+        $files = $game->files->find_all()->as_array();
+
+        $errors = array();
+
+        $primary_contact = new Model_Contact();
+        $secondary_contact = new Model_Contact();
+        $contacts = array(&$primary_contact,&$secondary_contact);
+        $file_revisions = $game->get_filerevisions();
+
+        if ($this->request->method() == 'POST') {
+
+            $provision_save = Arr::get($_POST, 'provision');
+            if( ! empty($provision_save)) {
+                $_POST = array_merge(array('game_center' => false, 'iCloud' => false, 'in_app_purchases' => false, 'notifications' => false), $_POST);
+            }
+
+            $first_contact_vals = array('name'=>Arr::get($_POST,'primary_contact_name'),'email'=>Arr::get($_POST,'primary_contact_email'));
+            $secondary_contact_vals = array('name'=>Arr::get($_POST,'secondary_contact_name'),'email'=>Arr::get($_POST,'secondary_contact_email'));
+
+            $game->values($_POST);
+            $game->process_and_upload($_FILES);
+
+            if (Model_Base::array_is_set($first_contact_vals)) {
+                $primary_contact->fill($first_contact_vals);
+                $primary_contact->position = 'primary_contact_id';
+
+            }
+
+            if (Model_Base::array_is_set($secondary_contact_vals)){
+                $secondary_contact->fill($secondary_contact_vals);
+                $secondary_contact->position = 'secondary_contact_id';
+            }
+
+
+            if($game->check() && Model_Contact::check_contacts($contacts)) {
+
+                foreach($contacts as $contact){
+                   $contact->save_and_set_contact($game);
+                }
+                $game->save();
+            }
+        }
+
+
+        $content = View::factory('admin/games/edit')
+                        ->set('game', $game)
+                        ->set('contacts',$contacts)
+                        ->set('servers',$servers)
+                        ->set('file_revisions', $file_revisions)
+                        ->set('files',$files)
+                        ->set('errors', $errors);
+
+        $response = View::factory('layout/visitor')
+                        ->set('content', $content);
+
+        $this->response->body($response);
+    }
+}

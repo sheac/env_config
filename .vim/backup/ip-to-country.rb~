@@ -1,0 +1,64 @@
+require 'csv'
+require 'net/http'
+require 'uri'
+require 'rubygems'
+require 'json'
+
+INPUT_FILENAME = "non-kingdoms-users.csv"
+OUTPUT_FILENAME = "non-kingdoms_users_with_countries.csv"
+URI_BASE = "http://freegeoip.net"
+RESPONSE_FORMAT = "json"
+HEADERS = ["email", "ip_address", "country_name"]
+
+# to get non-Kingdoms users, I went:
+# copy (select email, ip_address from users where not exists (select * from usersgames where users_id = users.id and games_id = 14) and ip_address != '96.53.37.62') to '/tmp-non-kingdoms-users.csv' with csv;
+
+def api_get_country_from_ip(ip)
+    if ip.nil? || ip == ''
+        return '(missing from DB)'
+    end
+
+    uri = URI.parse File.join(URI_BASE, RESPONSE_FORMAT, ip)
+    response = Net::HTTP.get_response(uri).body
+
+    begin
+        json = JSON.parse response
+        return json['country_name']
+    rescue
+        puts "\n\nSERVER RETURNED #{response}\nfor IP address:\n#{ip}\n"
+        return '(server returned error)'
+end
+
+def create_output_array(orig, ips_to_countries)
+    new = []
+    new << [HEADERS[0], HEADERS[2]]
+    orig.each do |old_row|
+        new_row = [old_row[0]]
+        new_row << ips_to_countries[old_row[1]]
+
+        new << new_row
+    end
+
+    return new
+end
+
+def write_output_array(arr, file_path)
+    CSV.open(file_path, "w") do |csv|
+        arr.each do |row|
+            csv << row
+        end
+    end
+end
+
+
+csv_text = File.read(File.join(Dir.getwd, INPUT_FILENAME))
+csv = CSV.parse(csv_text, :headers => true)
+
+ips = csv.map {|row| row[1]}
+ips_to_countries = {}
+ips.each do |ip|
+    ips_to_countries[ip] = api_get_country_from_ip(ip)
+end
+
+out_array = create_output_array(csv, ips_to_countries)
+write_output_array(out_array, File.join(Dir.getwd, OUTPUT_FILENAME))

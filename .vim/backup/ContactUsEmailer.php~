@@ -1,0 +1,27 @@
+<?php
+
+class ContactUsEmailer {
+
+    public static function send_notification($contact_msg)
+    {
+
+        $subject = "CONTACT US EMAIL: '{$contact_msg->subject}'";
+        $reasons = Model_ContactMessage::get_reason_options();
+        $reason = $reasons[$contact_msg->reason];
+        $message = View::factory('email/contact_us_email_html')
+                            ->set('subject', $contact_msg->subject)
+                            ->set('reason', $reason)
+                            ->set('from_name', $contact_msg->name)
+                            ->set('from_email', $contact_msg->email)
+                            ->set('message', $contact_msg->message)
+                            ->render();
+
+        Email::instance()
+            ->from('shealen.clare@gmail.com', 'Shea') // TODO: correct email address
+            ->to('shealen.clare@gmail.com') // TODO: correct email address
+            ->subject($subject)
+            ->message($message, true)
+            ->send()
+            ;
+    }
+}

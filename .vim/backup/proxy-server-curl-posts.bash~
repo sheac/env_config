@@ -1,0 +1,163 @@
+=============================================================================================================
+=============================================================================================================
+
+# YA0charge for 'events'
+# SEK 75
+'{
+    "event":"YA0charge",
+    "properties":{
+        "distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472",
+        "amount":75,
+        "currency":"SEK",
+        "uid":"",
+        "YA0ver":"1.0.6",
+        "YA0token":"b8b73492dac311e284c212313b0ace15"
+    }
+}'
+
+btoa('{"event":"YA0charge","properties":{"distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472","amount":75,"currency":"SEK","uid":"","YA0ver":"1.0.6","YA0token":"b8b73492dac311e284c212313b0ace15"}}')
+
+"eyJldmVudCI6IllBMGNoYXJnZSIsInByb3BlcnRpZXMiOnsiZGlzdGluY3RfaWQiOiIzNjdiNWM5YS02ZDg2LTRlNzYtYmNmOC04NGNjMDVmNzk0NzIiLCJhbW91bnQiOjc1LCJjdXJyZW5jeSI6IlNFSyIsInVpZCI6IiIsIllBMHZlciI6IjEuMC42IiwiWUEwdG9rZW4iOiJiOGI3MzQ5MmRhYzMxMWUyODRjMjEyMzEzYjBhY2UxNSJ9fQ=="
+
+=============================================================================================================
+=============================================================================================================
+
+# YA0charge for 'events'
+# for 3000 (no properties.time)
+'{
+    "event":"YA0charge",
+    "properties":{
+        "distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472",
+        "amount":0.99,
+        "currency":"CAD",
+        "uid":"",
+        "YA0ver":"1.0.6",
+        "YA0token":"b8b73492dac311e284c212313b0ace15"
+    }
+}'
+
+btoa('{"event":"YA0charge","properties":{"distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472","amount":0.99,"currency":"CAD","uid":"","YA0ver":"1.0.6","YA0token":"b8b73492dac311e284c212313b0ace15"}}')
+
+"eyJldmVudCI6IllBMGNoYXJnZSIsInByb3BlcnRpZXMiOnsiZGlzdGluY3RfaWQiOiIzNjdiNWM5YS02ZDg2LTRlNzYtYmNmOC04NGNjMDVmNzk0NzIiLCJhbW91bnQiOjAuOTksImN1cnJlbmN5IjoiQ0FEIiwidWlkIjoiIiwiWUEwdmVyIjoiMS4wLjYiLCJZQTB0b2tlbiI6ImI4YjczNDkyZGFjMzExZTI4NGMyMTIzMTNiMGFjZTE1In19"
+
+=============================================================================================================
+=============================================================================================================
+
+# YA0charge_X for 'events', bad amount
+###### OBSOLETE: WE NO LONGER CARE ABOUT AMOUNTS BEING TIER-BASED ########
+'{
+    "event":"YA0charge",
+    "properties":{
+        "distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472",
+        "amount":0.50,
+        "currency":"CAD",
+        "uid":"",
+        "time":1384452504,
+        "YA0ver":"1.0.6",
+        "YA0token":"b8b73492dac311e284c212313b0ace15"
+    }
+}'
+
+btoa('{"event":"YA0charge","properties":{"distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472","amount":0.50,"currency":"CAD","uid":"","YA0ver":"1.0.6","YA0token":"b8b73492dac311e284c212313b0ace15"}}')
+
+"eyJldmVudCI6IllBMGNoYXJnZSIsInByb3BlcnRpZXMiOnsiZGlzdGluY3RfaWQiOiIzNjdiNWM5YS02ZDg2LTRlNzYtYmNmOC04NGNjMDVmNzk0NzIiLCJhbW91bnQiOjAuNTAsImN1cnJlbmN5IjoiQ0FEIiwidWlkIjoiIiwiWUEwdmVyIjoiMS4wLjYiLCJZQTB0b2tlbiI6ImI4YjczNDkyZGFjMzExZTI4NGMyMTIzMTNiMGFjZTE1In19"
+
+=============================================================================================================
+=============================================================================================================
+
+# YA0charge_X for 'events', bad currency
+'{
+    "event":"YA0charge",
+    "properties":{
+        "distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472",
+        "amount":0.99,
+        "currency":"$",
+        "uid":"",
+        "time":1384452504,
+        "YA0ver":"1.0.6",
+        "YA0token":"b8b73492dac311e284c212313b0ace15"
+    }
+}'
+
+btoa('{"event":"YA0charge","properties":{"distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472","amount":0.99,"currency":"$","uid":"","YA0ver":"1.0.6","YA0token":"b8b73492dac311e284c212313b0ace15"}}')
+
+"eyJldmVudCI6IllBMGNoYXJnZSIsInByb3BlcnRpZXMiOnsiZGlzdGluY3RfaWQiOiIzNjdiNWM5YS02ZDg2LTRlNzYtYmNmOC04NGNjMDVmNzk0NzIiLCJhbW91bnQiOjAuOTksImN1cnJlbmN5IjoiJCIsInVpZCI6IiIsIllBMHZlciI6IjEuMC42IiwiWUEwdG9rZW4iOiJiOGI3MzQ5MmRhYzMxMWUyODRjMjEyMzEzYjBhY2UxNSJ9fQ=="
+
+=============================================================================================================
+=============================================================================================================
+
+# YA0charge for 'sdk_debug'
+# for 3000 (no properties.time)
+'{
+    "event":"YA0charge",
+    "properties":{
+        "distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472",
+        "amount":0.99,
+        "currency":"CAD",
+        "uid":"",
+        "YA0ver":"1.0.6",
+        "YA0token":"b8b73492dac311e284c212313b0ace15",
+        "YA0debug":1
+    }
+}'
+
+btoa('{"event":"YA0charge","properties":{"distinct_id":"367b5c9a-6d86-4e76-bcf8-84cc05f79472","amount":0.99,"currency":"CAD","uid":"","YA0ver":"1.0.6","YA0token":"b8b73492dac311e284c212313b0ace15","YA0debug":1}}')
+
+"eyJldmVudCI6IllBMGNoYXJnZSIsInByb3BlcnRpZXMiOnsiZGlzdGluY3RfaWQiOiIzNjdiNWM5YS02ZDg2LTRlNzYtYmNmOC04NGNjMDVmNzk0NzIiLCJhbW91bnQiOjAuOTksImN1cnJlbmN5IjoiQ0FEIiwidWlkIjoiIiwiWUEwdmVyIjoiMS4wLjYiLCJZQTB0b2tlbiI6ImI4YjczNDkyZGFjMzExZTI4NGMyMTIzMTNiMGFjZTE1IiwiWUEwZGVidWciOjF9fQ=="
+
+=============================================================================================================
+=============================================================================================================
+
+# YA0log
+# for 3000 (no properties.time)
+'{
+    "event":"YA0log",
+    "properties":{
+        "YA0token": "b8b73492dac311e284c212313b0ace15"
+    },
+    "errors": [
+        "error1",
+        "error2"
+    ],
+    "info": [
+        "info1",
+        "info2"
+    ]
+}'
+btoa('{"event":"YA0log","properties":{"YA0token":"b8b73492dac311e284c212313b0ace15"},"errors":["error1","error2"],"info":["info1","info2"]}')
+
+"eyJldmVudCI6IllBMGxvZyIsInByb3BlcnRpZXMiOnsiWUEwdG9rZW4iOiJiOGI3MzQ5MmRhYzMxMWUyODRjMjEyMzEzYjBhY2UxNSJ9LCJlcnJvcnMiOlsiZXJyb3IxIiwiZXJyb3IyIl0sImluZm8iOlsiaW5mbzEiLCJpbmZvMiJdfQ=="
+
+=============================================================================================================
+=============================================================================================================
+
+# YA0charge for 'sdk_debug'
+# for 3000 (no properties.time)
+'{
+    "event":"sheasTestEvent",
+    "properties":{
+        "distinct_id":"me",
+        "uid":"",
+        "YA0ver":"1.0.6",
+        "YA0token":"85cfa476a59b11e3b5a722000a97015e",
+        "YA0debug":1
+    }
+}'
+
+btoa('{"event":"SheasTestEvent","properties":{"distinct_id":"me","uid":"","YA0ver":"1.0.6","YA0token":"85cfa476a59b11e3b5a722000a97015e","YA0debug":1}}')
+
+"eyJldmVudCI6IlNoZWFzVGVzdEV2ZW50IiwicHJvcGVydGllcyI6eyJkaXN0aW5jdF9pZCI6Im1lIiwidWlkIjoiIiwiWUEwdmVyIjoiMS4wLjYiLCJZQTB0b2tlbiI6Ijg1Y2ZhNDc2YTU5YjExZTNiNWE3MjIwMDBhOTcwMTVlIiwiWUEwZGVidWciOjF9fQ=="
+
+
+=============================================================================================================
+=============================================================================================================
+
+
+# dev
+curl -X POST -d 'data=eyJldmVudCI6IllBMGNoYXJnZSIsInByb3BlcnRpZXMiOnsiZGlzdGluY3RfaWQiOiIzNjdiNWM5YS02ZDg2LTRlNzYtYmNmOC04NGNjMDVmNzk0NzIiLCJhbW91bnQiOjAuOTksImN1cnJlbmN5IjoiQ0FEIiwidWlkIjoiIiwiWUEwdmVyIjoiMS4wLjYiLCJZQTB0b2tlbiI6ImI4YjczNDkyZGFjMzExZTI4NGMyMTIzMTNiMGFjZTE1IiwiWUEwZGVidWciOjF9fQ==' http://192.168.1.54:3000/track
+
+# test
+curl -X POST -d 'data=eyJldmVudCI6IllBMGNoYXJnZSIsInByb3BlcnRpZXMiOnsiZGlzdGluY3RfaWQiOiIzNjdiNWM5YS02ZDg2LTRlNzYtYmNmOC04NGNjMDVmNzk0NzIiLCJhbW91bnQiOjAuOTksImN1cnJlbmN5IjoiQ0FEIiwidWlkIjoiIiwiWUEwdmVyIjoiMS4wLjYiLCJZQTB0b2tlbiI6ImI4YjczNDkyZGFjMzExZTI4NGMyMTIzMTNiMGFjZTE1IiwiWUEwZGVidWciOjF9fQ==' http://192.168.1.57:3000/track
+
+# production
+curl -X POST -d 'data=eyJldmVudCI6IlNoZWFzVGVzdEV2ZW50IiwicHJvcGVydGllcyI6eyJkaXN0aW5jdF9pZCI6Im1lIiwidWlkIjoiIiwiWUEwdmVyIjoiMS4wLjYiLCJZQTB0b2tlbiI6Ijg1Y2ZhNDc2YTU5YjExZTNiNWE3MjIwMDBhOTcwMTVlIiwiWUEwZGVidWciOjF9fQ==' yax02.ymcnetwork.com:3000/track

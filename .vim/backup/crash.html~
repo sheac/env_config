@@ -1,0 +1,3 @@
+<div ng-controller='crashController'>
+    <ng-include src="'./view/dashboards/templates/mono_template.html'"></ng-include>
+</div>

@@ -1,0 +1,29 @@
+var database = require('./database');
+var addInfoToCollectionJs = require('../tools/currency-translation/add-currency-info-to-collection.js');
+var addPacificTimeJs = require('../tools/timezones/add-pacific-time.js');
+
+var eventsCollection = database.eventCollection;
+
+exports.api = function(req,res) {
+
+    var task = req.query.task;
+    var token = req.query.token;
+    var currency = req.query.currency;
+    var callback = function(err) {
+        if (err) {
+            console.log("Server side error:",err);
+            return res.send(err);
+        } else {
+            console.log("Finished revenue migrations");
+            return res.send({ok: 1});
+        }
+    }
+
+    console.log('\n/datamigrations/   %s   %s\n', task, token);
+    
+    if (task == 'addCurrencyToEvents') {
+        addInfoToCollectionJs.addInfoToCollection(eventsCollection, token, currency, callback);
+    } else if (task == 'addPacificTimeToEvents') {
+        addPacificTimeJs.addPacificTime(eventsCollection, token, callback);
+    }
+}

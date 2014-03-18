@@ -1,0 +1,36 @@
+<div ng-controller='sdkDebugController'>
+    <div id="console">
+        <div class="console-headers">
+            <div class="type-col">{{language+'.charts.chart_text.sdk_type_header' | translate}}</div>
+            <div class="time-col">{{language+'.charts.chart_text.sdk_time_header' | translate}}</div>
+            <div class="ip-col">{{language+'.charts.chart_text.sdk_ip_address_header' | translate}}</div>
+            <div class="carat-col"><a class="carat-link" ng-click="toggleShowAllEvents()" ng-bind-html-unsafe="allEventsCarat"></a></div>
+            <div class="clear"></div>
+        </div>
+
+        <div id="console-display">
+            <div class="display-item" ng-repeat="event in events">
+                <div class="item-summary">
+                    <div class="type-col">{{event.type}}</div>
+                    <div class="time-col">{{event.time | date:'yyyy-MM-dd HH:mm:ss Z'}}</div>
+                    <div class="ip-col">{{event.ip_address}}</div>
+                    <div class="carat-col">
+                        <a class="carat-link" ng-click="toggleShowEvent(event)" ng-bind-html-unsafe="event.carat_char"></a>
+                    </div>
+                    <div class="clear"></div>
+                </div>
+                <div class="item-details" ng-hide="!event.show_details">
+                    <div class="details-data"><pre>{{event.details | json}}</pre></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="reload-btn-div">
+        <button ng-click="fetchEvents()" scroll-bottom="console-display" class="btn btn-primary reload-btn">{{language+'.charts.chart_text.sdk_reload_button' | translate}}</button>
+    </div>
+    <div class="help-link-div">
+        <a href="#" ng-click="openTutorialModal()">{{language+'.charts.chart_text.sdk_help_link' | translate}}&nbsp;<i class="fa fa-question-circle"></i></a>
+    </div>
+    <div class="clear"></div>
+</div>

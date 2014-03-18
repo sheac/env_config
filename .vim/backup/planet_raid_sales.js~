@@ -1,0 +1,16 @@
+db.events.aggregate([
+    {$match:
+        {
+            _id: '2a3a10f13deefdd13568639068f00d46',
+            event: 'YA0charge',
+            'properties.time_pacific': {$gte: new Date([2014, 02, 07])},
+        }
+    },
+    {$group:
+        {
+            _id: {
+                date: {$dayOfMonth: 'properties.time_pacific'},
+            }
+        }
+    },
+]);

@@ -1,0 +1,98 @@
+<div class="sdk-debug-tutorial-modal">
+    <div class="modal-header">
+        <div class="modal-header-title">
+            <h2>
+                SDK Debug View Help
+            </h2>
+        </div>
+        <div class="modal-header-dismiss">
+            <i class="fa fa-times-circle"></i>
+        </div>
+        <div class="clear"></div>
+    </div>
+
+    <div class="modal-body">
+        <h4>
+            Purpose and Scope
+        </h4>
+        <p>
+            The SDK Debug View is a way for iOS developers to verify that they have properly implemented the YMC SDK.
+        </p>
+
+
+
+        <h4>
+            Workflow
+        </h4>
+        <p>
+            <ol>
+                <li>
+                    Instrument your code with the YMC SDK, according to the documentation
+                </li>
+                <li>
+                    Create a build of your app that is not an App Store distribution build -- e.g. run your app in the Xcode iOS Simulator
+                </li>
+                <li>
+                    Navigate to the analytics page of your app, sign in and click on the SDK Debug View menu item
+                </li>
+                <li>
+                    Perform actions that should generate and send analytics SDK events
+                </li>
+                <li>
+                    Click the Reload button to fetch the most recently-sent ananlytics events
+                </li>
+                <li>
+                    Use the event description (e.g. <code>Time</code>, <code>IP Address</code>, etc) to identify events sent by your device.
+                    Details of the event can be verified by clicking the button to expand the event item and display the actual event JSON.
+                </li>
+            </ol>
+        </p>
+        <p>
+            If you don't see your events showing up, retry from the start.
+        </p>
+
+
+
+
+        <h4>
+            Custom Events
+        </h4>
+        <p>
+        The SDK Debug View also supports custom events that you create, define and send yourself, such as <code>level-up</code>, or <code>gain-collectable-05</code>.
+            Again, complete JSON data from these can be viewed by clicking to expand the item.
+        </p>
+
+
+
+
+        <h4>
+            Technical Stuff
+        </h4>
+        <p>
+            The SDK Debug View shows YMC SDK analytics events sent under any of the following conditions:
+        </p>
+        <ul>
+            <li>
+                iOS Simulators running from Xcode
+            </li>
+            <li>
+                Development builds uploaded from Xcode onto a device plugged into the machine running Xcode
+            </li>
+            <li>
+                iOS Ad hoc builds
+            </li>
+        </ul>
+        <p>
+            That is, pretty much anything that's not an Apple App Store distribution build, or non-iOS. (That's right --
+            the SDK Debug View only supports iOS so far).
+        </p>
+        <p>
+            Events are sent automatically to the Debug View and will not contribute to the data that is represented by our
+            charts for the major KPIs, such as <i>Active Users</i> or <i>ARPU</i>.
+        </p>
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary" ng-click="close()">Close</button>
+    </div>
+</div>

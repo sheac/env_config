@@ -1,0 +1,1889 @@
+# -*- coding: utf-8 -*-
+
+from ymc.lib import authentication as ApiAuthentication
+
+from ymc.model import User
+from ymc.model import Game
+from ymc.model import Developer
+from ymc.model import Publisher
+from ymc.model import UsersGames
+
+from django.test.client import Client
+from django.forms.models import model_to_dict
+
+import smtplib
+import urllib
+import datetime
+import time
+import calendar
+from django.utils.timezone import utc
+import unittest, json, re
+
+from django.test import TestCase
+from django.test import RequestFactory
+
+from django.conf import settings
+
+from api.views import users as ApiUsersView
+
+from ymc import path as YMCPath
+
+LARGE_NUMBER = 10
+
+def test_cases():
+    return [
+#        'test_generate_signature',
+#        'test_register',
+#        'test_guest_register_success',
+#        'test_guest_register_failure',
+#        'test_login_success',
+        'test_login_failure',
+#        'test_guest_login_success',
+#        'test_guest_login_failure',
+#        'test_guest_auth_success',
+#        'test_guest_auth_failure',
+#        'test_login_facebook_success',
+#        'test_login_facebook_failure',
+#        'test_guest_login_facebook_success',
+#        'test_guest_login_facebook_failure',
+#        'test_sign',
+#        'test_user',
+#        'test_user_with_game_list',
+#        'test_logout_success',
+#        'test_logout_failure',
+#        'test_developer_signup',
+#        'test_forgot_password',
+#        'test_forgot_password_for_dev_site',
+#        'test_admin_uids_success',
+#        'test_user_with_target_uid_success',
+#        'test_user_with_target_uid_failure',
+#        'test_update_self_success',
+#        'test_update_admin_other_success',
+#        'test_update_self_failure',
+#        'test_update_admin_other_failure',
+    ]
+
+"""
+    AuthenticationTestCase
+"""
+class AuthenticationTestCase(TestCase):
+
+    API_FAIL = 0
+    API_SUCCESS = 1
+
+    """
+    # Build up a user object
+    """
+    def setUp(self):
+        self.maxDiff = None
+
+        values = dict(
+            username='stindill',
+            password='changeme',
+            email='scott@ymcnetwork.com',
+            first_name='Scott',
+            last_name='Tindill',
+        )
+
+        self.user = User.Build(values)
+        self.user.GenerateForgotPasswordToken()
+        self.user.login()
+
+
+        dev_values = dict(
+            name='YMC',
+        );
+        self.developer = Developer.Build(dev_values)
+        self.developer.save()
+
+        pub_values = dict(
+            name='YMC Pub',
+        );
+        self.publisher = Publisher.Build(dev_values)
+        self.publisher.save()
+
+        values = dict(
+            title='test',
+            developer_id = self.developer.id,
+            ymc_id='77777777777777777777777',
+        )
+
+        self.games = Game.Build(values)
+        self.games.save()
+
+        values = dict(
+            title='test allow login no register',
+            developer_id = self.developer.id,
+            ymc_id='99999999999999999999999',
+            allow_unregistered_login=True,
+        )
+
+        self.games_noreg = Game.Build(values)
+        self.games_noreg.save()
+
+        values = dict(
+            title='developer site',
+            developer_id = self.developer.id,
+            ymc_id = settings.YMC_DEVELOPER_SITE_GAME_ID,
+        )
+        self.games_developer_site = Game.Build(values)
+        self.games_developer_site.save()
+
+
+        self.request_factory = RequestFactory()
+
+
+    """
+    # Not sure what to do here
+    """
+    def tearDown(self):
+        self.user = None
+
+    """
+    # Tests signature generation
+    """
+    def test_generate_signature(self):
+        data = model_to_dict(self.user)
+
+        for key, value in data.items():
+            print(key+" = "+str(value)+",")
+
+        print("SIGNING DATA: ")
+        # print(data)
+        signature1 = ApiAuthentication.Sign(data)
+        print(signature1)
+
+
+        data['_sig'] = signature1
+        signature2 = ApiAuthentication.Sign(data)
+        print(signature2)
+
+        self.assertEqual(signature1, signature2)
+
+    """
+    # Test Register
+    """
+    def test_register(self):
+        "Test /api/register uri"
+        client = Client()
+
+
+        print('\n========== test_register ==========\n')
+
+        user_register_data = [
+            {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser2', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': 'testuser2@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': '', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': '', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': '', 'email': '', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': '', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': '', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'testUser2', 'email': 'testuser2@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'garbage': 'trash'}, 'expect': self.API_FAIL},
+            {'data': {'username': '{POP{AOJOP*)(*y0y87yt97687$&$#&^T@YBXUHSGYX&(^(T@&*OGX', 'email': 'asjkdhkashdas@suahgdjhsgdja'}, 'expect': self.API_FAIL},
+            {'data': {}, 'expect': self.API_FAIL},
+            {'data': {'username': 'testing-duplicate-users', 'email': 'testduplicate@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'Testing-duplicate-users', 'email': 'testduplicate@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'Testing-duplicate-users', 'email': 'TestduplicatE@example.com', 'password': 'changeme3', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'Testing-duplicate-users', 'email': 'TestduplicatE@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': u"testingerererere@这个游戏规则.com", 'email': u"testingerererere@这个游戏规则.com", 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'testingNoEmail', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'email': 'testingNoUsername@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'email': 'testingNoUsernameexamplecom', 'password': 'changeme6', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'email': 'passwordtest@example.com', 'password': u'这个游戏规则', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+        ]
+
+        for register_data in user_register_data:
+            register_data['data']['_sig'] = ApiAuthentication.Sign(register_data['data'])
+            print(register_data['data'])
+            response = client.post('/api/users/register', data=register_data['data'], **{'wsgi.url_scheme': 'https'})
+
+            json_response = json.loads(response.content);
+            print(json_response)
+            self.assertEqual(json_response['status'], register_data['expect'])
+
+    """
+    # Test Guest Register Success
+    """
+    def test_guest_register_success(self):
+        client = Client()
+
+        print('\n========== test_guest_register_success ==========\n')
+
+        user_register_data = [
+            {'data': {'username': 'testUser', 'email': 'testuser1@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}},
+            {'data': {'username': '', 'email': 'testuser2@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}},
+            {'data': {'email': 'testuser3@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}},
+            {'data': {'first_name': '', 'username': 'testUser', 'email': 'testuser4@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}},
+            {'data': {'last_name': '', 'username': 'testUser', 'email': 'testuser5@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}},
+            {'data': {'username': u"testingerererere@这个游戏规则.com", 'email': u"testingerererere@这个游戏规则.com", 'password': 'changeme2', 'gid': '77777777777777777777777'}},
+        ]
+
+        for register_data in user_register_data:
+            guest = User.BuildNewGuest('127.0.0.1')
+            guest.login()
+            register_data['data']['uid'] = guest.id
+            register_data['data']['access_token'] = guest.access_token
+            register_data['data']['_sig'] = ApiAuthentication.Sign(register_data['data'])
+            response = client.post('/api/users/guests/register', data=register_data['data'], **{'wsgi.url_scheme': 'https'})
+
+            json_response = json.loads(response.content);
+            self.assertEqual(json_response['status'], self.API_SUCCESS)
+            user = User.objects.get(id=guest.id)
+            if ('username' in register_data['data'].keys() and register_data['data']['username'] != ''):
+                self.assertEqual(user.username, register_data['data']['username'].lower())
+            self.assertEqual(user.email, register_data['data']['email'].lower())
+            self.assertEqual(user.is_guest, False)
+
+            login_data = {
+                    'email': register_data['data']['email'],
+                    'password': register_data['data']['password'],
+                    'gid': register_data['data']['gid'],
+                }
+            login_data['_sig'] = ApiAuthentication.Sign(login_data)
+            response = client.post('/api/users/login', data=login_data, **{'wsgi.url_scheme':'https'})
+            json_response = json.loads(response.content);
+            self.assertEqual(json_response['status'], self.API_SUCCESS)
+
+
+    """
+    # Test Guest Register Failure
+    """
+    def test_guest_register_failure(self):
+        client = Client()
+
+        print('\n========== test_guest_register_failure ==========\n')
+
+        user_register_data = [
+            {'name': 'blank email',
+                'data': {'username': 'testUser', 'email': '', 'password': 'changeme', 'gid': '77777777777777777777777'},
+                'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            { 'name': 'bad params',
+                'data': {'garbage': 'trash'},
+                'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            {'name': 'invalid username',
+                'data': {'username': '{POP{AOJOP*)(*y0y87yt97687$&$#&^T@YBXUHSGYX&(^(T@&*OGX', 'email': 'asjkdhkashdas@suahgdjhsgdja'},
+                'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            {'name': 'no params',
+                'data': {},
+                'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            {'name': '(prep for duplicate email)',
+                'data': {'username': 'Testing-duplicate-users', 'email': 'TestduplicatE@example.com', 'password': 'changeme3', 'gid': '77777777777777777777777'},
+                'no_delete': True, 'expect': self.API_SUCCESS,
+            },
+            {'name': 'duplicate email',
+                'data': {'username': 'Testing-duplicate-users', 'email': 'TestduplicatE@example.com', 'password': 'changeme3', 'gid': '77777777777777777777777'},
+                'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            {'name': 'no username or email',
+                'data': {'password': 'changeme2', 'gid': '77777777777777777777777'},
+                'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            {'name': 'no email',
+                'data': {'username': 'testingNoEmail', 'password': 'changeme2', 'gid': '77777777777777777777777'},
+                'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            {'name': 'no uid',
+                'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'},
+                'no_uid': True, 'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            {'name': 'no token',
+                'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'},
+                'no_token': True, 'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            {'name': 'bad game id',
+                'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': 'bad_gid'},
+                'expect': self.API_FAIL, 'message': 'Failed to login to game',
+            },
+            {'name': 'no email',
+                'data': {'username': 'testingNoEmail', 'password': 'changeme2', 'gid': '77777777777777777777777'},
+                'expect': self.API_FAIL, 'message': 'Failed to authenticate',
+            },
+            {'name': 'not guest',
+                'data': {'username': 'notGuest', 'email': 'test@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'},
+                'not_guest': True, 'expect': self.API_FAIL, 'message': 'User must be a guest',
+            },
+
+        ]
+
+        for idx, register_data in enumerate(user_register_data):
+            print str(idx+1) + ". " + register_data['name']
+            guest = User.BuildNewGuest('127.0.0.1')
+            guest.login()
+            if (not 'no_uid' in register_data.keys()):   register_data['data']['uid'] = guest.id
+            if (not 'no_token' in register_data.keys()): register_data['data']['access_token'] = guest.access_token
+            if ('not_guest' in register_data.keys()):
+                guest.is_guest = False
+                guest.save()
+            register_data['data']['_sig'] = ApiAuthentication.Sign(register_data['data'])
+            response = client.post('/api/users/guests/register', data=register_data['data'], **{'wsgi.url_scheme': 'https'})
+
+            json_response = json.loads(response.content);
+            self.assertEqual(json_response['status'], register_data['expect'])
+            if ('message' in register_data.keys()): self.assertEqual(json_response['message'], register_data['message'])
+            if (not 'no_delete' in register_data.keys()): guest.delete()
+
+
+
+
+    """
+    # Test Login
+    """
+    def test_login_success(self):
+        "Test register, login and logout functionality"
+        client = Client()
+
+        print('\n========== test_login_success ==========\n')
+
+        # Register a new user...
+        print("Creating New User...")
+        new_user =  {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}
+        new_user['_sig'] = ApiAuthentication.Sign(new_user)
+
+        response = client.post('/api/users/register', data=new_user, **{'wsgi.url_scheme': 'https'})
+        #request = self.request_factory.post('/api/users/register', data=new_user)
+        #response = ApiUsersView.register(request)
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+
+        #login new user
+        print("Logging In User...")
+        response = client.post('/api/users/login', data=new_user, **{'wsgi.url_scheme': 'https'})
+        #request = self.request_factory.post('/api/users/login', data=new_user)
+        #response = ApiUsersView.login(request)
+
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+
+        print("Logging Out User...")
+        logout_data = {'token': json_response["response"]["access_token"], 'uid': json_response["response"]["uid"]}
+        logout_data['_sig'] = ApiAuthentication.Sign(logout_data)
+
+        request = self.request_factory.get('/api/users/logout', data=logout_data)
+        response = ApiUsersView.logout(request)
+
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+
+
+        # Try logging in users
+        print("Logging in a bunch of users...")
+        user_login_data = [
+            {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'email': 'testingNoUsername@example.com', 'password': 'changeme2', 'gid': '99999999999999999999999'}, 'expect': self.API_SUCCESS},
+        ]
+
+        for login_data in user_login_data:
+            print "\tFirst login"
+            login_data['data']['_sig'] = ApiAuthentication.Sign(login_data['data'])
+            response = client.post('/api/users/login', data=login_data['data'], **{'wsgi.url_scheme': 'https'})
+            json_response = json.loads(response.content)
+            self.assertEqual(json_response["status"], login_data['expect'])
+            if (login_data['expect'] == self.API_SUCCESS):
+                expected_expiry = datetime.datetime.utcnow().replace(tzinfo=utc)+datetime.timedelta(days=User.USER_TOKEN_EXPIRY_PERIOD)
+                expected_expiry = time.mktime(expected_expiry.timetuple())
+                self.assertEqual(json_response['response']['expires'], expected_expiry)
+
+            time.sleep(1)
+            print "\tSecond login"
+            login_data['data']['_sig'] = ApiAuthentication.Sign(login_data['data'])
+            second_response = client.post('/api/users/login', data=login_data['data'], **{'wsgi.url_scheme': 'https'})
+            json_response = json.loads(second_response.content)
+            self.assertEqual(json_response["status"], login_data['expect'])
+            if (login_data['expect'] == self.API_SUCCESS):
+                expected_expiry = datetime.datetime.utcnow().replace(tzinfo=utc)+datetime.timedelta(days=User.USER_TOKEN_EXPIRY_PERIOD)
+                expected_expiry = time.mktime(expected_expiry.timetuple())
+                self.assertEqual(json_response['response']['expires'], expected_expiry)
+
+
+    def test_login_failure(self):
+        "Test register, login and logout errors"
+        client = Client()
+
+        print('\n========== test_login_failure ==========\n')
+
+        # Register a new user...
+        print("Creating New User...")
+        new_user =  {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}
+        new_user['_sig'] = ApiAuthentication.Sign(new_user)
+
+        response = client.post('/api/users/register', data=new_user, **{'wsgi.url_scheme': 'https'})
+        #request = self.request_factory.post('/api/users/register', data=new_user)
+        #response = ApiUsersView.register(request)
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+
+        #login new user
+        print("Logging In User...")
+        response = client.post('/api/users/login', data=new_user, **{'wsgi.url_scheme': 'https'})
+        #request = self.request_factory.post('/api/users/login', data=new_user)
+        #response = ApiUsersView.login(request)
+
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+
+        print("Logging Out User...")
+        logout_data = {'token': json_response["response"]["access_token"], 'uid': json_response["response"]["uid"]}
+        logout_data['_sig'] = ApiAuthentication.Sign(logout_data)
+
+        print(logout_data)
+        request = self.request_factory.get('/api/users/logout', data=logout_data)
+        response = ApiUsersView.logout(request)
+
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+
+
+        # Try logging in users
+        print("Logging in a bunch of users...")
+        user_login_data = [
+                {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL, 'message': 'Failed to authenticate'},
+                {'data': {'username': 'TestUser', 'email': 'testuser@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL, 'message': 'Failed to authenticate'},
+                {'data': {'username': 'TestUser', 'email': 'Testuser@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL, 'message': 'Failed to authenticate'},
+                {'data': {'username': 'testUser', 'email': 'Testuser@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL, 'message': 'Failed to authenticate'},
+                {'data': {'garbage': 'trash'}, 'expect': self.API_FAIL, 'message': 'Failed to login to game'},
+                {'data': {'username': '{POP{AOJOP*)(*y0y87yt97687$&$#&^T@YBXUHSGYX&(^(T@&*OGX', 'email': 'asjkdhkashdas@suahgdjhsgdja'}, 'expect': self.API_FAIL, 'message': 'Failed to login to game'},
+                {'data': {}, 'expect': self.API_FAIL, 'message': 'Failed to login to game'},
+                {'data': {'gid': '77777777777777777777777'}, 'expect': self.API_FAIL, 'message': 'Failed to login user'},
+                {'data': {'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL, 'message': 'Failed to login user'},
+                {'data': {'username': 'testingNoEmail', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL, 'message': 'Failed to login user'},
+                {'data': {'email': 'testingNoUsername@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL, 'message': 'Failed to login user'},
+                {'data': {'username': 'testUser', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL, 'message': 'Failed to login user'},
+            ]
+
+        for login_data in user_login_data:
+            print login_data['message']
+            login_data['data']['_sig'] = ApiAuthentication.Sign(login_data['data'])
+            response = client.post('/api/users/login', data=login_data['data'], **{'wsgi.url_scheme': 'https'})
+            json_response = json.loads(response.content)
+            self.assertEqual(json_response["status"], login_data['expect'])
+            self.assertEqual(json_response["message"], login_data['message'])
+
+
+
+
+
+    """
+    # Test guest Login
+    """
+    def test_guest_login_success(self):
+        "Test register, guest login functionality"
+        client = Client()
+
+        print('\n========== test_guest_login_success ==========\n')
+
+        print "1. no uid/token"
+
+        orig_num_users = User.objects.all().count()
+        params = {
+            'gid': self.games.ymc_id,
+        }
+        params['_sig'] = ApiAuthentication.Sign(params)
+
+        response = client.post('/api/users/guests/login', data=params, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+        self.assertIn('uid', json_response['response'].keys())
+        self.assertIn('access_token', json_response['response'].keys())
+        self.assertIn('expires', json_response['response'].keys())
+        expected_expiry = datetime.datetime.utcnow().replace(tzinfo=utc)+datetime.timedelta(days=User.GUEST_TOKEN_EXPIRY_PERIOD)
+        expected_expiry = time.mktime(expected_expiry.timetuple())
+        self.assertEqual(json_response['response']['expires'], expected_expiry)
+
+        new_num_users = User.objects.all().count()
+        self.assertEqual(new_num_users, orig_num_users + 1)
+
+        guest = User.objects.get(access_token=json_response['response']['access_token'])
+        self.assertEqual(guest.id, json_response['response']['uid'])
+        self.assertTrue(guest.is_guest)
+
+
+        time.sleep(2)
+        print "2. uid/token supplied"
+
+        orig_num_users = User.objects.all().count()
+        params = {
+            'gid':          self.games.ymc_id,
+            'uid':          guest.id,
+            'access_token': guest.access_token,
+        }
+        params['_sig'] = ApiAuthentication.Sign(params)
+
+        response = client.post('/api/users/guests/login', data=params, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+        self.assertIn('uid', json_response['response'].keys())
+        self.assertIn('access_token', json_response['response'].keys())
+        self.assertIn('expires', json_response['response'].keys())
+        expected_expiry = datetime.datetime.utcnow().replace(tzinfo=utc)+datetime.timedelta(days=User.GUEST_TOKEN_EXPIRY_PERIOD)
+        expected_expiry = time.mktime(expected_expiry.timetuple())
+        self.assertEqual(json_response['response']['expires'], expected_expiry)
+
+        new_num_users = User.objects.all().count()
+        self.assertEqual(new_num_users, orig_num_users)
+
+        guest = User.objects.get(access_token=json_response['response']['access_token'])
+        self.assertEqual(guest.id, json_response['response']['uid'])
+        self.assertTrue(guest.is_guest)
+
+
+
+
+
+    """
+    # Test guest Login failure
+    """
+    def test_guest_login_failure(self):
+        "Test register, guest login functionality (fail cases)"
+        client = Client()
+
+        guest_user = User.BuildNewGuest('127.0.0.1')
+        guest_user.save()
+
+        self.assertFalse(self.user.is_guest)
+
+        print('\n========== test_guest_login_failure ==========\n')
+
+        cases = [
+            {
+                'name': 'uid but no token', 'message': 'Supply both uid and token together or neither',
+                'params': {
+                    'gid': self.games.ymc_id,
+                    'uid': guest_user.id,
+                },
+            },
+            {
+                'name': 'token but no uid', 'message': 'Supply both uid and token together or neither',
+                'params': {
+                    'gid': self.games.ymc_id,
+                    'access_token': guest_user.access_token,
+                },
+            },
+            {
+                'name': 'user not found', 'message': "Failed to authenticate",
+                'params': {
+                    'gid': self.games.ymc_id,
+                    'uid': 999999,
+                    'access_token': 'bad_token',
+                },
+            },
+            {
+                'name': 'game not found', 'message': "Failed to login to game",
+                'params': {
+                    'gid': 'bad_gid',
+                    'uid': guest_user.id,
+                    'access_token': guest_user.access_token,
+                },
+            },
+            {
+                'name': 'not a guest', 'message': 'User must be a guest',
+                'params': {
+                    'gid': self.games.ymc_id,
+                    'uid': self.user.id,
+                    'access_token': self.user.access_token,
+                },
+            },
+        ]
+
+        for idx, case in enumerate(cases):
+
+            print str(idx+1) + ". " + case['name']
+            orig_num_users = User.objects.all().count()
+            params = case['params']
+            params['_sig'] = ApiAuthentication.Sign(params)
+            response = client.post('/api/users/guests/login', data=params, **{'wsgi.url_scheme': 'https'})
+            json_response = json.loads(response.content)
+            self.assertEqual(json_response["status"], self.API_FAIL)
+            self.assertEqual(json_response["message"], case['message'])
+            self.assertIn('uid', json_response['response'].keys())
+            self.assertIn('access_token', json_response['response'].keys())
+            self.assertNotIn('expires', json_response['response'].keys())
+            new_num_users = User.objects.all().count()
+            self.assertEqual(new_num_users, orig_num_users)
+
+
+    """
+    # Test Guest Auth Success
+    """
+    def test_guest_auth_success(self):
+        print("\n========= test_guest_auth_success ==========\n")
+        client = Client()
+
+        print "1. not guest"
+        auth_data = {
+                'token': self.user.access_token,
+                'uid':          self.user.id,
+                'gid':          self.games.ymc_id,
+            }
+        auth_data['_sig'] = ApiAuthentication.Sign(auth_data)
+        response = client.post('/api/users/guests/auth', data=auth_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], 'Failed to authenticate')
+
+        print "2. is guest"
+        guest = User.BuildNewGuest('127.0.0.1')
+        guest.login()
+        auth_data = {
+                'token': guest.access_token,
+                'uid':          guest.id,
+                'gid':          self.games.ymc_id,
+            }
+        auth_data['_sig'] = ApiAuthentication.Sign(auth_data)
+        response = client.post('/api/users/guests/auth', data=auth_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        self.assertEqual(json_response['response']['access_token'], guest.access_token)
+        self.assertEqual(json_response['response']['uid'], guest.id)
+
+
+
+
+    """
+    # Test Guest Auth Failure
+    """
+    def test_guest_auth_failure(self):
+        print("\n========= test_guest_auth_failure ==========\n")
+        client = Client()
+
+        guest = User.BuildNewGuest('127.0.0.1')
+        guest.login()
+
+        cases = [
+                { 'name': 'no uid',
+                    'data': {'token': guest.access_token, 'gid': self.games.ymc_id,},
+                    'message': 'Failed to authenticate',
+                },
+                { 'name': 'no token',
+                    'data': {'uid': guest.id, 'gid': self.games.ymc_id,},
+                    'message': 'Failed to authenticate',
+                },
+                { 'name': 'bad uid',
+                    'data': {'token': guest.access_token, 'uid': 99999999, 'gid': self.games.ymc_id,},
+                    'message': 'Failed to authenticate',
+                },
+                { 'name': 'bad token',
+                    'data': {'token': 'bad_token', 'uid': guest.id, 'gid': self.games.ymc_id,},
+                    'message': 'Failed to authenticate',
+                },
+            ]
+
+        for idx, case in enumerate(cases):
+            print str(idx+1) + ". " + case['name']
+            case['_sig'] = ApiAuthentication.Sign(case)
+            response = client.post('/api/users/guests/auth', data=case['data'], **{'wsgi.url_scheme': 'https'})
+            json_response = json.loads(response.content)
+            self.assertEqual(json_response['status'], self.API_FAIL)
+            self.assertEqual(json_response['message'], case['message'])
+
+
+
+
+    """
+    # Test Guest Login Facebook
+    """
+    def test_guest_login_facebook_success(self):
+        print('\n========== test guest login facebook success ==========\n')
+        client = Client()
+
+        fbid = '12345'
+        guest_user = User.BuildNewGuest('71.233.115.220')
+        guest_user.save()
+
+        # Register a new user...
+        print("Creating New User From Guest...")
+        login_data =  {
+                'gid': '77777777777777777777777',
+                'fbid': fbid,
+                'fbtok': fbid+':success',
+                'uid': guest_user.id,
+                'access_token': guest_user.access_token,
+            }
+        login_data['_sig'] = ApiAuthentication.Sign(login_data)
+
+        response = client.post('/api/users/guests/login', data=login_data, **{'wsgi.url_scheme': 'https'})
+        first_json_response = json.loads(response.content)
+        self.assertEqual(first_json_response["status"], self.API_SUCCESS)
+        self.assertEqual(guest_user.access_token, first_json_response['response']['access_token'])
+        expected_expiry = datetime.datetime.utcnow().replace(tzinfo=utc)+datetime.timedelta(days=User.USER_TOKEN_EXPIRY_PERIOD)
+        expected_expiry = time.mktime(expected_expiry.timetuple())
+        self.assertEqual(first_json_response['response']['expires'], expected_expiry)
+        self.assertEqual(guest_user.id, first_json_response['response']['uid'])
+
+        # use the existing user
+        time.sleep(2)
+        print("Use Existing User...")
+        del login_data['uid']
+        del login_data['access_token']
+        login_data['_sig'] = ApiAuthentication.Sign(login_data)
+        response = client.post('/api/users/login', data=login_data, **{'wsgi.url_scheme': 'https'})
+        new_json_response = json.loads(response.content)
+        self.assertEqual(new_json_response["status"], self.API_SUCCESS)
+        self.assertEqual(new_json_response['response']['uid'], first_json_response['response']['uid'])
+        self.assertEqual(new_json_response['response']['access_token'], first_json_response['response']['access_token'])
+        expected_expiry = datetime.datetime.utcnow().replace(tzinfo=utc)+datetime.timedelta(days=User.USER_TOKEN_EXPIRY_PERIOD)
+        expected_expiry = time.mktime(expected_expiry.timetuple())
+        self.assertEqual(new_json_response['response']['expires'], expected_expiry)
+
+
+
+    def test_guest_login_facebook_failure(self):
+        print('\n========== test guest login facebook failure ==========\n')
+        client = Client()
+
+
+        existing_guest_fbid = '12345'
+        guest_login_data =  {
+                'gid': '77777777777777777777777',
+                'fbid': existing_guest_fbid,
+                'fbtok': existing_guest_fbid+':success'
+            }
+        guest_login_data['_sig'] = ApiAuthentication.Sign(guest_login_data)
+        response = client.post('/api/users/login', data=guest_login_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+        existing_guest_fb_user_id = json_response['response']['uid']
+        existing_guest_fb_user = User.objects.get(id=existing_guest_fb_user_id)
+        existing_guest_fb_user.is_guest = True
+        existing_guest_fb_user.save()
+
+        existing_nonguest_fbid = '54321'
+        nonguest_login_data =  {
+                'gid': '77777777777777777777777',
+                'fbid': existing_nonguest_fbid,
+                'fbtok': existing_nonguest_fbid+':success'
+            }
+        nonguest_login_data['_sig'] = ApiAuthentication.Sign(nonguest_login_data)
+        response = client.post('/api/users/login', data=nonguest_login_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+        existing_nonguest_fb_user_id = json_response['response']['uid']
+        existing_nonguest_fb_user = User.objects.get(id=existing_nonguest_fb_user_id)
+        self.assertFalse(existing_nonguest_fb_user.is_guest)
+
+        guest_user = User.BuildNewGuest('71.233.115.220')
+        guest_user.save()
+
+        fbid = 'asdf'
+        case_list = [
+            {
+                'name': 'not a guest', 'message': 'User must be a guest',
+                'data': {
+                    'gid': self.games.ymc_id,
+                    'fbid': existing_nonguest_fbid,
+                    'fbtok': existing_nonguest_fbid+':success',
+                    'uid': existing_nonguest_fb_user.id,
+                    'access_token': existing_nonguest_fb_user.access_token,
+                }
+            },
+            {
+                'name': 'fb auth error', 'message': 'Failed to authenticate',
+                'data': {
+                    'gid': self.games.ymc_id,
+                    'fbid': fbid,
+                    'fbtok': fbid+':not_success',
+                    'uid': guest_user.id,
+                    'access_token': guest_user.access_token,
+                }
+            },
+            {
+                'name': 'already has fb credentials',
+                'message': 'Guest already associated with FB ID. Use std login',
+                'data': {
+                    'gid': self.games.ymc_id,
+                    'fbid': existing_guest_fbid,
+                    'fbtok': existing_guest_fbid+':success',
+                    'uid': existing_guest_fb_user.id,
+                    'access_token': existing_guest_fb_user.access_token,
+                }
+            },
+            {
+                'name': 'no uid or token', 'message': 'Must supply uid and token to login with facebook from guest endpoint',
+                'data': {
+                    'gid': self.games.ymc_id,
+                    'fbid': fbid,
+                    'fbtok': fbid+':success',
+                }
+            },
+        ]
+
+        for idx, case in enumerate(case_list):
+            print(str(idx+1)+". "+case['name'])
+            case['data']['_sig'] = ApiAuthentication.Sign(case['data'])
+            response = client.post('/api/users/guests/login', data=case['data'], **{'wsgi.url_scheme': 'https'})
+            json_response = json.loads(response.content)
+            self.assertEqual(json_response["status"], self.API_FAIL)
+            self.assertEqual(json_response['message'], case['message'])
+
+
+
+
+
+
+
+
+
+    """
+    # Test Login Facebook
+    """
+    def test_login_facebook_success(self):
+        print('\n========== test_login facebook success ==========\n')
+        client = Client()
+
+        fbid = '12345'
+
+        # Register a new user...
+        print("Creating New User...")
+        login_data =  {
+                'gid': '77777777777777777777777',
+                'fbid': fbid,
+                'fbtok': fbid+':success'
+            }
+        login_data['_sig'] = ApiAuthentication.Sign(login_data)
+
+        response = client.post('/api/users/login', data=login_data, **{'wsgi.url_scheme': 'https'})
+        first_json_response = json.loads(response.content)
+        self.assertEqual(first_json_response["status"], self.API_SUCCESS)
+        self.assertIn('access_token', first_json_response['response'].keys())
+        self.assertIn('expires', first_json_response['response'].keys())
+        self.assertIn('uid', first_json_response['response'].keys())
+
+        # use the existing user
+        print("Use Existing User...")
+        response = client.post('/api/users/login', data=login_data, **{'wsgi.url_scheme': 'https'})
+        new_json_response = json.loads(response.content)
+        self.assertEqual(new_json_response["status"], self.API_SUCCESS)
+        self.assertEqual(new_json_response['response']['uid'], first_json_response['response']['uid'])
+        self.assertEqual(new_json_response['response']['access_token'], first_json_response['response']['access_token'])
+        self.assertEqual(new_json_response['response']['expires'], first_json_response['response']['expires'])
+
+
+
+    def test_login_facebook_failure(self):
+        print('\n========== test_login facebook failure ==========\n')
+        client = Client()
+
+        fbid = '12345'
+        case_list = [
+            {
+                'name': 'no fbid or fbtok', 'message': 'Failed to login user',
+                'data': {
+                    'gid': self.games.ymc_id,
+                }
+            },
+            {
+                'name': 'empty fbid and fbtok', 'message': 'Failed to login user',
+                'data': {
+                    'gid': self.games.ymc_id, 'fbid': '', 'fbtok': '',
+                }
+            },
+            {
+                'name': 'fb auth error', 'message': 'Failed to authenticate',
+                'data': {
+                    'gid': self.games.ymc_id, 'fbid': fbid, 'fbtok': fbid+':not_success',
+                }
+            },
+        ]
+
+        for idx, case in enumerate(case_list):
+            print(str(idx+1)+". "+case['name'])
+            case['data']['_sig'] = ApiAuthentication.Sign(case['data'])
+            response = client.post('/api/users/login', data=case['data'], **{'wsgi.url_scheme': 'https'})
+            json_response = json.loads(response.content)
+            self.assertEqual(json_response["status"], self.API_FAIL)
+            self.assertEqual(json_response['message'], case['message'])
+
+
+
+
+
+    """
+    # Test Sign
+    """
+    def test_sign(self):
+        data = {u'username': u'', u'first_name': u'', u'last_name': u'', u'_sig': u'44936f11b812f0bd6e05669489c1d55e991726cd0f5d7085d3ac1c0b0fc04b49', u'gid': u'b8b73492dac311e284c212313b0ace15', u'password': u'test', u'email': u'\u505c\u653e\u70b9.com'}
+        print("SIGNING...");
+        print(data);
+        sig = ApiAuthentication.Sign(data)
+        print(sig)
+
+
+    """
+    # Test User
+    """
+    def test_user(self):
+        print('\n========== test_user==========\n')
+        session_data = dict(
+            token=self.user.access_token,
+        )
+
+        #print(model_to_dict(self.user))
+        #print(session_data)
+
+        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+        response = ApiUsersView.read(request, self.user.id)
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response['response']['username'], self.user.username)
+        self.assertEqual(json_response['response']['first_name'], self.user.first_name)
+        self.assertEqual(json_response['response']['last_name'], self.user.last_name)
+        self.assertEqual(json_response['response']['email'], self.user.email)
+        self.assertEqual(json_response['response']['game_list'], [])
+        self.assertEqual(json_response['response']['uid'], self.user.id)
+        self.assertIsNone(json_response['response']['gender'])
+        self.assertNotIn('is_admin', json_response['response'].keys())
+        self.assertNotIn('publisher_id', json_response['response'].keys())
+
+        self.user.gender = 1
+        self.user.publisher = self.publisher
+        self.user.is_admin = True
+        self.user.save()
+
+        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+        response = ApiUsersView.read(request, self.user.id)
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response['response']['username'], self.user.username)
+        self.assertEqual(json_response['response']['first_name'], self.user.first_name)
+        self.assertEqual(json_response['response']['last_name'], self.user.last_name)
+        self.assertEqual(json_response['response']['email'], self.user.email)
+        self.assertEqual(json_response['response']['game_list'], [])
+        self.assertEqual(json_response['response']['uid'], self.user.id)
+        #self.assertIsNone(json_response['response']['gender'])
+        #self.assertNotIn('is_admin', json_response['response'].keys())
+        #self.assertNotIn('publisher_id', json_response['response'].keys())
+        self.assertEqual(json_response['response']['gender'], self.user.gender)
+        self.assertEqual(json_response['response']['is_admin'], self.user.is_admin)
+        self.assertEqual(json_response['response']['publisher_id'], self.user.publisher.id)
+
+
+
+
+    def test_logout_success(self):
+        print('\n========== test_logout_success ==========\n')
+
+        self.user.login()
+
+        session_data = dict(
+                token = self.user.access_token,
+                uid = self.user.id,
+            )
+
+        session_data['_sig'] = ApiAuthentication.Sign(session_data)
+
+        request = self.request_factory.get('/api/users/logout', data=session_data)
+        response = ApiUsersView.logout(request)
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+
+        updated_user = User.objects.get(id=self.user.id)
+        self.assertIsNone(updated_user.access_token)
+
+
+
+
+    def test_logout_failure(self):
+        print('\n========== test_logout_failure ==========\n')
+
+        self.user.login()
+
+        cases = [
+                {
+                    'name': 'no uid', 'message': 'Failed to authenticate',
+                    'data': {'token': self.user.access_token,},
+                },
+                {
+                    'name': 'no token', 'message': 'Failed to authenticate',
+                    'data': {'uid': self.user.id,},
+                },
+                {
+                    'name': 'is guest', 'message': 'Cannot logout a guest',
+                    'data': {'token': self.user.access_token, 'uid': self.user.id,},
+                    'is_guest': True
+                },
+        ]
+
+        for idx, case in enumerate(cases):
+
+            print str(idx+1) + ". " + case['name']
+
+            if ('is_guest' in case.keys()):
+                self.user.is_guest = True
+            else:
+                self.user.is_guest = False
+            self.user.save()
+
+            case['data']['_sig'] = ApiAuthentication.Sign(case['data'])
+
+            request = self.request_factory.get('/api/users/logout', data=case['data'])
+            response = ApiUsersView.logout(request)
+            json_response = json.loads(response.content)
+            self.assertEqual(json_response['status'], self.API_FAIL)
+            self.assertEqual(json_response['message'], case['message'])
+
+            updated_user = User.objects.get(id=self.user.id)
+            self.assertIsNotNone(updated_user.access_token)
+
+
+    """
+    # Test User with Game_List parameter
+    """
+    def test_user_with_game_list(self):
+        print('\n========== test_user_with_game_list ==========\n')
+
+        usersgames_datas = [
+            {
+                'games_id': self.games.id,
+                'users_id': self.user.id,
+                'last_login': datetime.datetime.utcnow().replace(tzinfo=utc),
+                'registered_at': datetime.datetime.utcnow().replace(tzinfo=utc),
+                'login_count': 1,
+            },
+            {
+                'games_id': self.games_noreg.id,
+                'users_id': self.user.id,
+                'last_login': datetime.datetime.utcnow().replace(tzinfo=utc),
+                'registered_at': datetime.datetime.utcnow().replace(tzinfo=utc),
+                'login_count': 2,
+            },
+        ]
+
+        for usersgames_data in usersgames_datas:
+            usersgames = UsersGames.Build(usersgames_data)
+            usersgames.save()
+
+        session_data = dict(
+            token=self.user.access_token,
+            game_list='1'
+        )
+
+        #print(model_to_dict(self.user))
+        #print(session_data)
+
+        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+        response = ApiUsersView.read(request, self.user.id)
+        json_response = json.loads(response.content)
+        print(json_response)
+
+        self.assertIsNotNone(json_response['response']['game_list'])
+        self.assertEqual(len(json_response['response']['game_list']), 2)
+        for game in json_response['response']['game_list']:
+            self.assertIsNotNone(game['title'])
+            self.assertIsNotNone(game['ymc_id'])
+
+            datas_index = 1 if game['ymc_id'] == u'99999999999999999999999' else 0
+
+            self.assertEqual(game['login_count'], usersgames_datas[datas_index]['login_count'])
+            last_login_utc = calendar.timegm(usersgames_datas[datas_index]['last_login'].timetuple())
+            self.assertEqual(game['last_login'], last_login_utc)
+            registered_at_utc = calendar.timegm(usersgames_datas[datas_index]['registered_at'].timetuple())
+            self.assertEqual(game['registered_at'], registered_at_utc)
+
+
+    def test_logout(self):
+        print('\n========== test_logout==========\n')
+
+        session_data = dict(
+            token="\\xE0\\x22\xDD\\x906\\xA7\\x0E\\x18\\xC2\\xAE\\xE1-\\x9A8;\\xA3\\xB3\\x9F\\x04\\xE76\\x1C\\xB5\\x91\\xE0\\x85\\xE9\\xD0\\xC0\\xA5U\\x1D@",
+            uid=511804320,
+        )
+
+        session_data['_sig'] = ApiAuthentication.Sign(session_data)
+
+        request = self.request_factory.get('/api/users/logout', data=session_data)
+        response = ApiUsersView.logout(request)
+        print(response)
+
+
+    def test_developer_signup(self):
+        print('\n========== test_logout==========\n')
+
+        client = Client()
+
+        # Try logging in users
+        print("Logging in a bunch of developers...")
+        developer_signup_data = [
+            {'data': {'username': 'developer_user', 'email': 'devuser1@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'developer_user', 'email': 'devuser1@example.com', 'password': 'changeme', 'developer_name': 'Scott\'s Crazy Game Studio','gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'developer_user', 'email': 'devuser1@example.com', 'password': 'changeme', 'developer_name': u'erere@这个游戏规则','gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'developer_user', 'email': 'devuser2@example.com', 'password': 'changeme', 'developer_name': u'erere@这个游戏规则','gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+        ]
+
+        for signup_data in developer_signup_data:
+            signup_data['data']['_sig'] = ApiAuthentication.Sign(signup_data['data'])
+            print(signup_data['data'])
+            response = client.post('/api/developers/register', data=signup_data['data'], **{'wsgi.url_scheme': 'https'})
+
+            json_response = json.loads(response.content)
+            print(json_response)
+
+            self.assertEqual(json_response["status"], signup_data['expect'])
+
+
+
+    def test_forgot_password(self):
+        print('\n========== test_forgot_password ===========\n')
+
+        client = Client()
+
+        login_data = {
+                'username' : self.user.username,
+                'password' : 'changeme',
+                'gid' : self.games.ymc_id,
+            }
+        login_data['_sig'] = ApiAuthentication.Sign(login_data)
+        response = client.post('/api/users/login', data=login_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+
+        dev_site_users_reset_path = '/users/reset'
+        forgot_data = {
+                'email' : self.user.email,
+                'gid' : self.games.ymc_id,
+            }
+        forgot_data['_sig'] = ApiAuthentication.Sign(forgot_data)
+
+        self.user.ClearForgotPasswordToken()
+        self.user.save()
+
+        response = client.post('/api/users/forgot', data=forgot_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+
+        self.assertIn(len(smtplib.SMTP.inbox_CUSTOM_TEST_UTIL()), xrange(1, LARGE_NUMBER))
+        email_body = smtplib.SMTP.inbox_CUSTOM_TEST_UTIL()[-1].body_CUSTOM_TEST_UTIL()
+        print email_body
+        self.assertIn(YMCPath.admin_users_reset_password_link('#').split('#')[0], email_body)
+        self.assertIn(settings.RESET_PASSWORD_ADDRESS, email_body)
+
+
+
+
+    def test_forgot_password_for_dev_site(self):
+        print('\n========== test_forgot_password_for_dev_site ===========\n')
+
+        client = Client()
+
+        login_data = {
+                'username' : self.user.username,
+                'password' : 'changeme',
+                'gid' : self.games_developer_site.ymc_id,
+            }
+        login_data['_sig'] = ApiAuthentication.Sign(login_data)
+        response = client.post('/api/users/login', data=login_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+
+        dev_site_users_reset_path = '/users/reset'
+        forgot_data = {
+                'email' : self.user.email,
+                'gid' : self.games_developer_site.ymc_id,
+                'dev_site_rel_path' : urllib.urlencode({'path':dev_site_users_reset_path}).split('=')[1]
+            }
+        forgot_data['_sig'] = ApiAuthentication.Sign(forgot_data)
+
+        self.user.ClearForgotPasswordToken()
+        self.user.save()
+
+        response = client.post('/api/users/forgot', data=forgot_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+
+        self.assertIn(len(smtplib.SMTP.inbox_CUSTOM_TEST_UTIL()), xrange(1, LARGE_NUMBER))
+        email_body = smtplib.SMTP.inbox_CUSTOM_TEST_UTIL()[-1].body_CUSTOM_TEST_UTIL()
+        print email_body
+        self.assertIn(dev_site_users_reset_path, email_body)
+        self.assertIn(settings.DEVELOPER_SITE_RESET_PASSWORD_BASE_ADDRESS, email_body)
+        self.assertIn('uid=', email_body)
+
+
+
+    def test_admin_uids_success(self):
+        print('\n========== test_admin_uids_success ===========\n')
+
+        self.user.is_admin = True
+        self.user.save()
+
+        some_other_user = User.Build(
+            dict(
+                username='sclare',
+                password='changeme',
+                email='shea@ymcnetwork.com',
+                first_name='Shea',
+                last_name='Clare',
+            )
+        )
+        some_other_user.save()
+        self.assertFalse(some_other_user.is_admin)
+
+        some_other_admin = User.Build(
+            dict(
+                username='wguan',
+                password='changeme',
+                email='william@ymcnetwork.com',
+                first_name='William',
+                last_name='Guan',
+            )
+        )
+        some_other_admin.is_admin = True
+        some_other_admin.save()
+        self.assertTrue(some_other_admin.is_admin)
+
+        client = Client()
+
+        req_data = {
+                'uid' : self.user.id,
+                'token' : self.user.access_token,
+            }
+        req_data['_sig'] = ApiAuthentication.Sign(req_data)
+        response = client.post('/api/admin/uids', data=req_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+
+        self.assertIn(self.user.id, json_response['response'])
+        self.assertIn(some_other_admin.id, json_response['response'])
+        self.assertNotIn(some_other_user.id, json_response['response'])
+
+
+    """
+    # Test User with target_uid
+    """
+    def test_user_with_target_uid_success(self):
+        print('\n========== test_user_with_target_uid_success ==========\n')
+
+        self.user.is_admin = True
+        self.user.save()
+
+        other_user = User.Build(dict(
+            username='sclare',
+            password='changeme',
+            email='shea@ymcnetwork.com',
+            first_name='Shea',
+            last_name='Clare',
+        ))
+        other_user.save()
+
+        session_data = dict(
+            token = self.user.access_token,
+            target_uid = other_user.id
+        )
+
+        #print(model_to_dict(self.user))
+        #print(session_data)
+
+        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+        response = ApiUsersView.read(request, self.user.id)
+        json_response = json.loads(response.content)
+        print(json_response)
+
+        self.assertEqual(json_response['response']['username'], other_user.username)
+        self.assertEqual(json_response['response']['first_name'], other_user.first_name)
+        self.assertEqual(json_response['response']['last_name'], other_user.last_name)
+        self.assertEqual(json_response['response']['email'], other_user.email)
+        self.assertEqual(json_response['response']['game_list'], [])
+        self.assertEqual(json_response['response']['uid'], other_user.id)
+        self.assertIsNone(json_response['response']['gender'])
+        self.assertNotIn('is_admin', json_response['response'].keys())
+        self.assertNotIn('publisher_id', json_response['response'].keys())
+        self.assertNotIn('developer_id', json_response['response'].keys())
+
+        other_user.gender = 1
+        other_user.publisher = self.publisher
+        other_user.developer = self.developer
+        other_user.is_admin = True
+        other_user.save()
+
+        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+        response = ApiUsersView.read(request, self.user.id)
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response['response']['username'], other_user.username)
+        self.assertEqual(json_response['response']['first_name'], other_user.first_name)
+        self.assertEqual(json_response['response']['last_name'], other_user.last_name)
+        self.assertEqual(json_response['response']['email'], other_user.email)
+        self.assertEqual(json_response['response']['game_list'], [])
+        self.assertEqual(json_response['response']['uid'], other_user.id)
+        #self.assertIsNone(json_response['response']['gender'])
+        #self.assertNotIn('is_admin', json_response['response'].keys())
+        #self.assertNotIn('publisher_id', json_response['response'].keys())
+        self.assertEqual(json_response['response']['gender'], other_user.gender)
+        self.assertEqual(json_response['response']['is_admin'], other_user.is_admin)
+        self.assertEqual(json_response['response']['publisher_id'], other_user.publisher.id)
+        self.assertEqual(json_response['response']['developer_id'], other_user.developer.id)
+
+
+
+
+    """
+    # Test User with target_uid failure cases
+    """
+    def test_user_with_target_uid_failure(self):
+        print('\n========== test_user_with_target_uid_failure ==========\n')
+
+        other_user = User.Build(dict(
+            username='sclare',
+            password='changeme',
+            email='shea@ymcnetwork.com',
+            first_name='Shea',
+            last_name='Clare',
+        ))
+        other_user.save()
+
+        session_data = dict(
+            token = self.user.access_token,
+            target_uid = other_user.id
+        )
+
+        print "1. access user not admin"
+
+        self.user.is_admin = False
+        self.user.save()
+
+        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+        response = ApiUsersView.read(request, self.user.id)
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], 'Failed to authenticate as admin')
+
+        print "2. access user auth failure"
+
+        self.user.is_admin = True
+        self.user.save()
+
+        session_data['token'] = 'bad-token'
+
+        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+        response = ApiUsersView.read(request, self.user.id)
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], 'Failed to authenticate')
+
+        session_data['token'] = self.user.access_token
+
+        print "3. target user not found"
+
+        session_data['target_uid'] = 999999999
+
+        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+        response = ApiUsersView.read(request, self.user.id)
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], 'Target user not found')
+
+
+
+
+
+    """
+    # Test update self success
+    """
+    def test_update_self_success(self):
+        print('\n========== test_update_self_success ==========\n')
+
+        self.user.is_admin = False
+        self.user.save()
+
+        print "1. no update"
+        old_vals = model_to_dict(self.user)
+
+        update_data = dict(
+            token = self.user.access_token,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+        print "2. update gender only"
+        new_gender = 1
+        self.user = User.objects.get(id=self.user.id)
+        old_vals = model_to_dict(self.user)
+        old_vals['gender'] = new_gender
+
+        update_data = dict(
+            token = self.user.access_token,
+            gender = new_gender,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals)
+
+        print "3. update first and last name"
+        new_first_name = u"bobby"
+        new_last_name = u"bouche"
+        self.user = User.objects.get(id=self.user.id)
+        old_vals = model_to_dict(self.user)
+        old_vals['first_name'] = new_first_name
+        old_vals['last_name'] = new_last_name
+
+        update_data = dict(
+            token = self.user.access_token,
+            first_name = new_first_name,
+            last_name = new_last_name,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals)
+
+        print "4. update email"
+        new_email = u'email@email.com'
+        self.user = User.objects.get(id=self.user.id)
+        old_vals = model_to_dict(self.user)
+        old_vals['email'] = new_email
+
+        update_data = dict(
+            token = self.user.access_token,
+            email = new_email,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals)
+
+        print "5. update publisher and developer to something"
+
+        new_publisher = Publisher.Build({'name': 'New Pub'})
+        new_publisher.save()
+        new_publisher_id = new_publisher.id
+        new_developer_id = self.developer.id
+
+        self.user = User.objects.get(id=self.user.id)
+        self.user.is_admin = True
+        self.user.save()
+        old_vals = model_to_dict(self.user)
+        old_vals['publisher'] = new_publisher.id
+        old_vals['developer'] = self.developer.id
+
+        update_data = dict(
+            token           = self.user.access_token,
+            publisher_id    = new_publisher_id,
+            developer_id    = new_developer_id,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals)
+
+        print "5. update publisher and developer to None"
+        new_publisher_id = None
+        new_developer_id = None
+
+        self.user = User.objects.get(id=self.user.id)
+        self.user.is_admin = True
+        self.user.save()
+        old_vals = model_to_dict(self.user)
+        old_vals['publisher'] = new_publisher_id
+        old_vals['developer'] = new_developer_id
+
+        update_data = dict(
+            token           = self.user.access_token,
+            publisher_id    = '',
+            developer_id    = '',
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        print json_response
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals)
+
+        print "6. update password"
+        new_password = 'changemeagain'
+
+        self.user.is_admin = False
+        self.user.save()
+        old_vals = model_to_dict(User.objects.get(id=self.user.id))
+        old_vals['password'] = User.GeneratePassword(self.user.salt, new_password)
+
+        update_data = dict(
+            token           = self.user.access_token,
+            password        = new_password,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        print json_response
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals)
+
+
+
+
+
+
+    """
+    # Test update admin other success
+    """
+    def test_update_admin_other_success(self):
+        print('\n========== test_update_admin_other_success ==========\n')
+
+        other_user = User.Build(dict(
+            username='sclare',
+            password='changeme',
+            email='shea@ymcnetwork.com',
+            first_name='Shea',
+            last_name='Clare',
+        ))
+        other_user.save()
+
+        self.user.is_admin = True
+        self.user.save()
+
+        print "1. no update"
+        old_vals = model_to_dict(other_user)
+
+        update_data = dict(
+            token = self.user.access_token,
+            target_uid = other_user.id,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=other_user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+        print "2. update gender only"
+        new_gender = 1
+        other_user = User.objects.get(id=other_user.id)
+        old_vals = model_to_dict(other_user)
+        old_vals['gender'] = new_gender
+
+        update_data = dict(
+            token = self.user.access_token,
+            gender = new_gender,
+            target_uid = other_user.id,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=other_user.id))
+        self.assertEqual(old_vals, new_vals)
+
+        print "3. update first and last name"
+        new_first_name = u"bobby"
+        new_last_name = u"bouche"
+        other_user = User.objects.get(id=other_user.id)
+        old_vals = model_to_dict(other_user)
+        old_vals['first_name'] = new_first_name
+        old_vals['last_name'] = new_last_name
+
+        update_data = dict(
+            token = self.user.access_token,
+            first_name = new_first_name,
+            last_name = new_last_name,
+            target_uid = other_user.id,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=other_user.id))
+        self.assertEqual(old_vals, new_vals)
+
+        print "4. update email"
+        new_email = u'email@email.com'
+        other_user = User.objects.get(id=other_user.id)
+        old_vals = model_to_dict(other_user)
+        old_vals['email'] = new_email
+
+        update_data = dict(
+            token = self.user.access_token,
+            email = new_email,
+            target_uid = other_user.id,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=other_user.id))
+        self.assertEqual(old_vals, new_vals)
+
+        print "5. update publisher and developer"
+
+        new_publisher = Publisher.Build({'name': 'New Pub'})
+        new_publisher.save()
+        new_publisher_id = new_publisher.id
+        new_developer_id = self.developer.id
+
+        other_user = User.objects.get(id=other_user.id)
+        old_vals = model_to_dict(other_user)
+        old_vals['publisher'] = new_publisher.id
+        old_vals['developer'] = self.developer.id
+
+        update_data = dict(
+            token           = self.user.access_token,
+            publisher_id    = new_publisher_id,
+            developer_id    = new_developer_id,
+            target_uid = other_user.id,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        new_vals = model_to_dict(User.objects.get(id=other_user.id))
+        self.assertEqual(old_vals, new_vals)
+
+        print "6. update password"
+        new_password = 'changemeagain'
+
+        other_user = User.objects.get(id=other_user.id)
+        old_vals = model_to_dict(other_user)
+        old_vals['password'] = new_password
+
+        update_data = dict(
+            token           = self.user.access_token,
+            target_uid = other_user.id,
+            password        = new_password,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_SUCCESS)
+        other_user = User.objects.get(id=other_user.id)
+        self.assertTrue(ApiAuthentication.Validate(other_user, new_password))
+
+
+
+
+    """
+    # Test update self failure
+    """
+    def test_update_self_failure(self):
+        print('\n========== test_update_self_failure ==========\n')
+
+        self.user.is_admin = False
+        self.user.save()
+
+        print "1. auth failure: bad token, uid or _sig"
+        old_vals = model_to_dict(self.user)
+        update_data = dict(
+            token = 'bad-token',
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+        update_data = dict(
+            token = self.user.access_token,
+        )
+        update_data['_sig'] = 'bad-_sig'
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+        old_vals = model_to_dict(self.user)
+        update_data = dict(
+            token = self.user.access_token,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+        url = '/api/users/update/' + str(999999)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+        print "2. attempt to set publisher/developer_id as non-admin"
+        old_vals = model_to_dict(self.user)
+        self.assertFalse(self.user.is_admin)
+        update_data = dict(
+            token = self.user.access_token,
+            developer_id = self.developer.id,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], "Non admins may not set publisher_id or developer_id")
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+        print "3. non-existant developer/publisher"
+        self.user.is_admin = True
+        self.user.save()
+        old_vals = model_to_dict(self.user)
+        update_data = dict(
+            token = self.user.access_token,
+            developer_id = 999999,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], "Developer not found")
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+        print "4. attempt to set password to empty"
+        self.assertTrue(self.user.is_admin)
+        old_vals = model_to_dict(self.user)
+        update_data = dict(
+            token = self.user.access_token,
+            password = '',
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], "May not set password to empty")
+        new_vals = model_to_dict(User.objects.get(id=self.user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+
+
+
+
+
+    """
+    # Test update admin other failure
+    """
+    def test_update_admin_other_failure(self):
+        print('\n========== test_update_admin_other_failure ==========\n')
+
+        other_user = User.Build(dict(
+            username='sclare',
+            password='changeme',
+            email='shea@ymcnetwork.com',
+            first_name='Shea',
+            last_name='Clare',
+        ))
+        other_user.save()
+
+        self.user.is_admin = True
+        self.user.save()
+
+        print "1. not admin"
+        self.user.is_admin = False
+        self.user.save()
+        old_vals = model_to_dict(other_user)
+        update_data = dict(
+            token = self.user.access_token,
+            target_uid = other_user.id,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], 'Access denied')
+        new_vals = model_to_dict(User.objects.get(id=other_user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+        self.user.is_admin = True
+        self.user.save()
+
+        print "2. nonexistant target user"
+        old_vals = model_to_dict(other_user)
+        update_data = dict(
+            token = self.user.access_token,
+            target_uid = 9999999,
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], 'Target user not found')
+        new_vals = model_to_dict(User.objects.get(id=other_user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+        print "3. attempt to set another's password as non-admin"
+        old_vals = model_to_dict(other_user)
+        self.user.is_admin = False
+        self.user.save()
+        update_data = dict(
+            token = self.user.access_token,
+            target_uid = other_user.id,
+            password = 'changemeagain',
+        )
+        update_data['_sig'] = ApiAuthentication.Sign(update_data)
+        url = '/api/users/update/' + str(self.user.id)
+        response = Client().post(url, data=update_data, **{'wsgi.url_scheme': 'https'})
+        json_response = json.loads(response.content)
+        self.assertEqual(json_response['status'], self.API_FAIL)
+        self.assertEqual(json_response['message'], "Access denied")
+        new_vals = model_to_dict(User.objects.get(id=other_user.id))
+        self.assertEqual(old_vals, new_vals) # no changes in update call mean no changes in record
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        print("\n\n\n\n\n")

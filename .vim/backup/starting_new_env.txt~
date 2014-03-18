@@ -1,0 +1,22 @@
+- create VM
+    - user: ubuntu / pw: 123
+- configure network w/ port forwarding
+    - 127.0.0.1:2222 -> 10.0.2.14:22
+    - 127.0.0.1:8080 -> 10.0.2.14:8888
+- run VM and install ubuntu
+- sudo apt-get install openssh-server
+- sudo apt-get install git
+- sudo apt-get install vim
+- copy ~/.ssh to the VM
+- clone the repo through git
+- cd to deploy
+- sudo run the install-core.sh
+- sudo run the install-django.sh
+- sudo run the install-ssl.sh
+- comment out the run install-* lines and then sudo run the install-all.sh
+- do the special things as instructed in the bottom of install-all.sh
+- start the nginx server
+    - sudo apt-get install rsplib-tools
+    - server nginx restart
+- start the django server
+    - python manage.py runserver 0.0.0.0:8888

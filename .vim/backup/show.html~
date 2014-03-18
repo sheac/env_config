@@ -1,0 +1,129 @@
+{% load static %}
+{% include "admin/header.html" %}
+{% load menu_items %}
+
+<div id="show">
+    <div class='grid_6'>
+        <h1>{{user_fullname}}</h1>
+    </div>
+    <div class='hr'></div>
+    <div class='admin-form'>
+        <div class='grid_4'>
+            <div class="field-wrapper">
+                <label>First Name</label>
+                <span>{{ user.first_name }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>Last Name</label>
+                <span>{{ user.last_name }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>Email</label>
+                <span>{{ user.email }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>Username</label>
+                <span>{{ user.username }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>Gender</label>
+                <span>{{ user_gender_string }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>Administrator</label>
+                <span>{{ user.is_admin }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>Developer</label>
+                <span>{{ user.developer.name }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>Publisher</label>
+                <span>{{ user.publisher.name }}</span>
+            </div>
+        </div>
+        <div class='grid_3 push_1'>
+            <div class="field-wrapper">
+                <label>Joined At</label>
+                <span>{{ user.joined_at }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>Last Login</label>
+                <span>{{ user.last_login }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>Facebook ID</label>
+                <span>{{ user.facebook_id }}</span>
+            </div>
+            <div class="field-wrapper">
+                <label>IP Address</label>
+                <span>{{ user.ip_address }}</span>
+            </div>
+        </div>
+    </div>
+    <div class='clear'></div><br/>
+    <div class='admin-form'>
+        <div class='grid_4'>
+            <h2>{{user_fullname}}&#39;s Games</h2>
+        </div>
+        {% if is_admin %}
+            <div class='grid_6 push_2'>
+                <ul class='nav-links'>
+                    <li>
+                        <a href='{{ user.id|admin_users_games_add }}'>
+                            <img src="{% static 'images/add-icon.png'%}">Associate Games</img>
+                        </a>
+                    </li>
+                    <li>
+                        <a href='{{ user.id|admin_users_games_remove }}'>
+                            <img src="{% static 'images/delete-icon.png'%}">Disassociate Games</img>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        {% if is_admin %}
+        <div class='index-table grid_12'>
+            <table>
+                <thead>
+                    <th></th>
+                    <th>Title</th>
+                    <th>Developer</th>
+                    <th>Publisher</th>
+                    <th>First Logged In</th>
+                    <th>Last Logged In</th>
+                    <th>Log In Count</th>
+                    <th>User Game ID</th>
+                </thead>
+                <tbody>
+                {% for usergame in usersgames %}
+                    <tr {% cycle '' "class='striped'" %}>
+                        <td>{{forloop.counter}}</td>
+                        <td>
+                            {% if is_admin %}
+                                <a href = '{{usergame.id|admin_users_games_edit}}'>{{usergame.games.title}}</a>
+                            {% else %}
+                                {{usergame.games.title}}
+                            {% endif %}
+                        </td>
+                        <td>{{usergame.games.developer.name}}</td>
+                        <td>{{usergame.games.publisher.name}}</td>
+                        <td>{{usergame.registered_at}}</td>
+                        <td>{{usergame.last_login}}</td>
+                        <td>{{usergame.login_count}}</td>
+                        <td>{{usergame.user_game_id}}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+    </div>
+    <div class='clear'></div>
+    <br/><br/>
+    {% if is_admin %}
+        <a href='{{ user.id|admin_users_edit }}'><input type="button" value="Edit User"  class='button'/></a>
+    {% endif %}
+    <a href='{% admin_users %}'><input type="button" value="All Users"  class='button'/></a>
+</div>
+
+{% include "admin/footer.html" %}

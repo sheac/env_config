@@ -1,0 +1,111 @@
+var currencyConversion = require('./curr-convert.js');
+var mongo = require('mongojs');
+var async = require('async');
+
+var addCurrencyToCollection = function(collection, gameId, newCurrency, newPropertyName, topCallback) {
+
+    var _id2usdMaps = [];
+
+    var errorHandler = function(err) {
+        if (typeof topCallback !== "undefined") {
+            topCallback(err);
+        } else {
+            throw err;
+        }
+    }
+
+    async.series({
+
+        populate_id2usd: function(callback) {
+
+            var queryHash = (gameId && typeof gameId !== "undefined") ?
+                                {event: {$in: ["YA0charge", "YA0charge_X"]}, "properties.YA0token": gameId} :
+                                {event: {$in: ["YA0charge", "YA0charge_X"]}};
+                                
+            collection.find(queryHash).forEach(function(err, doc) {
+                if (err) { return errorHandler(err); }
+
+                if (!!doc) {
+                    var old_currency    = doc.properties.currency,
+                        amt         = doc.properties.amount;
+                    var usd = null;
+                    try {
+                        usd = currencyConversion.toUSDRevenue(amt, old_currency);
+                    } catch (err) {
+                        console.error("unable to find USD for amt =", amt, "and currency =", old_currency);
+                    }
+                    _id2usdMaps.push({_id: doc._id, usd: usd});
+                } else {
+                    console.log("calling populate_id2usd callback");
+                    return callback();
+                }
+            });
+        },
+
+        addUsdInfoToAll: function(callback) {
+            async.each(_id2usdMaps, function(_id2usdMap, eachCallback){
+                var _id     = _id2usdMap['_id'],
+                    usd     = _id2usdMap['usd'];
+
+                var updateHash = {$set: {}};
+                if (!!usd) {
+                    updateHash['$set'][newPropertyName] = usd;
+                    updateHash['$set']['event'] = 'YA0charge';
+                    updateHash['$pull'] = {'properties.YA0error': newPropertyName};
+                } else {
+                    updateHash['$set'][newPropertyName] = 0;
+                    updateHash['$set']['event'] = 'YA0charge_X';
+                    updateHash['$addToSet'] = {"properties.YA0error": newPropertyName};
+                }
+                                    
+                collection.findAndModify({
+                    query: {_id: _id},
+                    update: updateHash,
+                }, function(err, doc) {
+                    if (err) {return errorHandler(err); }
+                    eachCallback();
+                });
+            },
+            function(err){
+                if (err) { return errorHandler(err); }
+
+                console.log("calling addUsdInfoToAll callback");
+                callback();
+            });
+        },
+    },
+        
+    function(err) {
+        if (err) { return errorHandler(err); }
+
+        if (topCallback && typeof topCallback !== "undefined") {
+            topCallback();
+        }
+    });
+}
+
+var addUSDToCollection = function(collection, ya0token, callback) {
+    return addCurrencyToCollection(collection, ya0token, 'USD', 'properties.YA0USD', callback);
+}
+
+if (require.main === module) {
+    var events = require('../../reporter/database.js').eventCollection;
+    var sdkDebug = require('../../reporter/database.js').sdkDebugCollection;
+
+    async.series({
+        processEvents: function(callback) {
+            addUSDToCollection(events, null, callback);
+        },
+        processSdkDebug: function(callback) {
+            addUSDToCollection(sdkDebug, null, callback);
+        }
+    },
+    function(err) {
+        if (err) {throw err;}
+        process.exit(0);
+    });
+
+} else {
+    exports.addUSDToCollection = addUSDToCollection;
+}
+

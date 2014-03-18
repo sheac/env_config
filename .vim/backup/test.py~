@@ -1,0 +1,34 @@
+import subprocess
+
+POST_DATA_DIR = 'post_data'
+REGISTER_DATA_FILE = 'register_post_data.txt'
+
+"""
+command = 'curl'
+opts = ['-k', '-d']
+url = 'https://api.ymcgames.com/api/users/register'
+#post_data_file = POST_DATA_DIR + REGISTER_DATA_FILE
+post_data = "email=gordon@example.com&username=gordon&password=changeme&_sig=1d135825495629a5765ac3fc05c8e75c75832ecc7dbbb97a2dc9fd9c0ec35294"
+
+ouput = subprocess.check_output([command, opts[0], opts[1], post_data, url], shell=True, stderr=subprocess.STDOUT)
+"""
+
+
+subp = subprocess.Popen([
+            'curl',
+            '-k',
+            '-d',
+            '"email=gordon@example.com&username=gordon&password=changeme&_sig=1d135825495629a5765ac3fc05c8e75c75832ecc7dbbb97a2dc9fd9c0ec35294"',
+            'https://api.ymcgames.com/api/users/register'
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+
+curlstdout, curlstderr = subp.communicate()
+
+op = str(curlstdout)
+err = str(curlstderr)
+
+print(op)
+print(err)

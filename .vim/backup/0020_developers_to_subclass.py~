@@ -1,0 +1,106 @@
+# -*- coding: utf-8 -*-
+import datetime
+from south.db import db
+from south.v2 import DataMigration
+from django.db import models
+
+class Migration(DataMigration):
+
+    def forwards(self, orm):
+
+        for d in orm.SubclassDeveloper.objects.all():
+            sd.delete()
+
+        for d in orm.Developer.objects.all().values():
+            sd = orm.SubclassDeveloper()
+            sd.id = d['id']
+            sd.created_at = d['created_at']
+            sd.name = d['name']
+            sd.save()
+
+
+    def backwards(self, orm):
+        raise RuntimeError("Cannot reverse this migration -- consider deleting all records in the table")
+
+
+    models = {
+        'ymc.developer': {
+            'Meta': {'object_name': 'Developer', 'db_table': "'developers'"},
+            'created_at': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'name': ('django.db.models.fields.CharField', [], {'max_length': '255'})
+        },
+        'ymc.game': {
+            'Meta': {'object_name': 'Game', 'db_table': "'games'"},
+            'allow_unregistered_login': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'created_at': ('django.db.models.fields.DateTimeField', [], {'null': 'True'}),
+            'developer': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': "orm['ymc.Developer']", 'null': 'True', 'blank': 'True'}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'itunes_id': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
+            'mp_key': ('django.db.models.fields.CharField', [], {'max_length': '128', 'null': 'True', 'blank': 'True'}),
+            'mp_secret': ('django.db.models.fields.CharField', [], {'max_length': '128', 'null': 'True', 'blank': 'True'}),
+            'mp_token': ('django.db.models.fields.CharField', [], {'max_length': '128', 'null': 'True', 'blank': 'True'}),
+            'platform': ('django.db.models.fields.IntegerField', [], {'default': '0', 'null': 'True', 'blank': 'True'}),
+            'rating': ('django.db.models.fields.IntegerField', [], {'default': '0', 'null': 'True', 'blank': 'True'}),
+            'reset_password_base_address': ('django.db.models.fields.CharField', [], {'default': 'None', 'max_length': '255', 'null': 'True', 'blank': 'True'}),
+            'title': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
+            'ymc_id': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '128'})
+        },
+        'ymc.leaderboard': {
+            'Meta': {'object_name': 'Leaderboard', 'db_table': "'leaderboards'"},
+            'game': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': "orm['ymc.Game']"}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'title': ('django.db.models.fields.CharField', [], {'max_length': '255'})
+        },
+        'ymc.leaderboardentry': {
+            'Meta': {'object_name': 'LeaderboardEntry', 'db_table': "'leaderboardentries'"},
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'leaderboard': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': "orm['ymc.Leaderboard']"}),
+            'score': ('django.db.models.fields.IntegerField', [], {'default': '0', 'null': 'True', 'blank': 'True'}),
+            'user': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': "orm['ymc.User']"})
+        },
+        'ymc.subclassdeveloper': {
+            'Meta': {'object_name': 'SubclassDeveloper', 'db_table': "'subclassdevelopers'"},
+            'created_at': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'name': ('django.db.models.fields.CharField', [], {'max_length': '255'})
+        },
+        'ymc.user': {
+            'Meta': {'object_name': 'User', 'db_table': "'users'"},
+            'access_token': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
+            'access_token_expiry': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'developer': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': "orm['ymc.Developer']", 'null': 'True', 'blank': 'True'}),
+            'email': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '128'}),
+            'facebook_access_token': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
+            'facebook_id': ('django.db.models.fields.CharField', [], {'max_length': '128', 'null': 'True', 'blank': 'True'}),
+            'first_name': ('django.db.models.fields.CharField', [], {'max_length': '128', 'null': 'True', 'blank': 'True'}),
+            'forgot_password_token': ('django.db.models.fields.CharField', [], {'max_length': '255', 'null': 'True', 'blank': 'True'}),
+            'forgot_password_token_expiry': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'games': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['ymc.Game']", 'null': 'True', 'through': "orm['ymc.UsersGames']", 'blank': 'True'}),
+            'gender': ('django.db.models.fields.IntegerField', [], {'default': 'None', 'null': 'True', 'blank': 'True'}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'ip_address': ('django.db.models.fields.IPAddressField', [], {'max_length': '15', 'null': 'True', 'blank': 'True'}),
+            'is_admin': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'joined_at': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'last_login': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'last_name': ('django.db.models.fields.CharField', [], {'max_length': '128', 'null': 'True', 'blank': 'True'}),
+            'password': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '128'}),
+            'registered_at': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'salt': ('django.db.models.fields.CharField', [], {'max_length': '128', 'unique': 'True', 'null': 'True', 'blank': 'True'}),
+            'username': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
+            'verified_at': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'})
+        },
+        'ymc.usersgames': {
+            'Meta': {'object_name': 'UsersGames', 'db_table': "'usersgames'"},
+            'games': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['ymc.Game']"}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'last_login': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'login_count': ('django.db.models.fields.IntegerField', [], {'default': '0', 'null': 'True', 'blank': 'True'}),
+            'registered_at': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
+            'user_game_id': ('django.db.models.fields.IntegerField', [], {'default': '0', 'null': 'True', 'blank': 'True'}),
+            'users': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['ymc.User']"})
+        }
+    }
+
+    complete_apps = ['ymc']
+    symmetrical = True

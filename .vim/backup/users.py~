@@ -1,0 +1,322 @@
+from django.http import HttpResponse, HttpResponseRedirect, Http404
+from django.core.exceptions import ValidationError
+
+from django.shortcuts import render
+from django.conf import settings
+
+from django import forms
+from django.db import models
+
+
+from ymc.model.users import User
+from ymc.model.games import Game
+from ymc.model.usersgames import UsersGames
+
+from ymc.lib import authentication as ApiAuthentication
+
+from app.session import force_login, requires_admin
+
+from app import views_helpers
+from app.views_helpers import build_template_vars
+
+from app import path
+from ymc import path as YMCPath
+
+from ymc.emails.emails import Email
+
+from app.views.admin import userforms
+
+from django.utils.timezone import utc
+import datetime
+
+from django.conf import settings
+
+from django.db.models import Q
+from django.core.files import File
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+from django.template import Context, Template
+import os.path
+
+"""
+    users/
+    Show list of all users currently in the system
+"""
+@force_login
+def index(request):
+
+    filter_form  = userforms.AdminFilterUserForm(initial=request.POST)
+
+    filter_form_email = request.POST.get('email')
+    filter_form_registered_at_from = request.POST.get('registered_at_from')
+    filter_form_registered_at_to = request.POST.get('registered_at_to')
+    filter_form_last_login_from = request.POST.get('last_login_from')
+    filter_form_last_login_to = request.POST.get('last_login_to')
+    filter_form_results_per_page = request.POST.get('results_per_page', 100)
+
+    query = Q()
+    if(filter_form_email):
+        query = query & Q(email__contains=filter_form_email)
+    if(filter_form_registered_at_from):
+        query = query & Q(registered_at__gte=filter_form_registered_at_from)
+    if(filter_form_registered_at_to):
+        query = query & Q(registered_at__lte=filter_form_registered_at_to)
+    if(filter_form_last_login_from):
+        query = query & Q(last_login__gte=filter_form_last_login_from)
+    if(filter_form_last_login_to):
+        query = query & Q(last_login__lte=filter_form_last_login_to)
+
+
+    users_list =  User.objects.filter(query).order_by('username')
+
+    # users_list =  User.objects.all().order_by('username')
+    paginator = Paginator(users_list, filter_form_results_per_page) # Show 100 users per page
+
+    page = request.GET.get('page')
+
+    try:
+        users = paginator.page(page)
+    except PageNotAnInteger:
+        # If page is not an integer, deliver first page.
+        users = paginator.page(1)
+    except EmptyPage:
+        # If page is out of range (e.g. 9999), deliver last page of results.
+        users = paginator.page(paginator.num_pages)
+
+    template_vars = build_template_vars(request)
+    template_vars['users'] = users
+    template_vars['filter_form'] = filter_form
+    template_vars['publisher_id'] = request.session['publisher_id']
+
+    return  render(request, 'admin/users/index.html', template_vars)
+
+
+"""
+"""
+@force_login
+@requires_admin
+def new(request):
+    form  = userforms.AdminNewUserForm()
+    if(request.method == 'POST'):
+        form = userforms.AdminNewUserForm(request.POST)
+        if(form.is_valid()):
+            user = User.Build(form.cleaned_data)
+            user.save()
+            return HttpResponseRedirect(path.admin_users())
+
+    template_vars = build_template_vars(request)
+    template_vars['form'] = form
+
+    return  render(request, 'admin/users/new.html', template_vars)
+
+"""
+"""
+@force_login
+@requires_admin
+def edit(request, user_id=None):
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        raise Http404
+
+    form  = userforms.AdminEditUserForm(instance=user)
+    if(request.method == 'POST'):
+        form = userforms.AdminEditUserForm(request.POST, instance=user)
+        if(form.is_valid()):
+            form.save()
+            return HttpResponseRedirect(path.admin_users())
+
+    template_vars = build_template_vars(request)
+    template_vars['user_fullname'] = user.GetFullName()
+    template_vars['user_id'] = user.id
+    template_vars['form'] = form
+
+    return  render(request, 'admin/users/edit.html', template_vars)
+
+"""
+"""
+@force_login
+def show(request, user_id=None):
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        raise Http404
+
+    form  = userforms.AdminEditUserForm(instance=user)
+    if(request.method == 'POST'):
+        form = userforms.AdminEditUserForm(request.POST, instance=user)
+        if(form.is_valid()):
+            form.save()
+            return HttpResponseRedirect(path.admin_users())
+
+    template_vars = build_template_vars(request)
+    template_vars['user_fullname'] = user.GetFullName()
+    template_vars['user'] = user
+    template_vars['usersgames'] =  UsersGames.objects.filter(users_id=user.id)
+    template_vars['user_gender_string'] = user.getGenderString()
+    template_vars['publisher_id'] = request.session.get('publisher_id', None)
+
+    return  render(request, 'admin/users/show.html', template_vars)
+
+"""
+"""
+@force_login
+@requires_admin
+def delete(request, user_id=None):
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        raise Http404
+
+    if(request.method == 'POST'):
+        user.delete()
+        return HttpResponseRedirect(path.admin_users())
+
+    template_vars = build_template_vars(request)
+    template_vars['user_fullname'] = user.GetFullName()
+    template_vars['user_id'] = user.id
+
+    return  render(request, 'admin/users/delete.html', template_vars)
+
+
+"""
+"""
+@force_login
+def password(request, user_id=None):
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        raise Http404
+
+    form  = userforms.AdminPasswordUserForm(instance=user)
+
+    if(request.method == 'POST'):
+
+        postDict = request.POST.copy()
+        #result = ApiAuthentication.ValidateAdmin(user, postDict['password'])
+
+        postDict['password'] = User.GeneratePassword(salt=user.salt, password=postDict['password_new'])
+        form = userforms.AdminPasswordUserForm(postDict, instance=user)
+
+        if(form.is_valid()):
+            form.save()
+            return HttpResponseRedirect(path.admin_users())
+
+
+    reset_password_valid = user.IsForgotPasswordTokenValid()
+
+    template_vars = build_template_vars(request)
+    template_vars['user_fullname'] = user.GetFullName()
+    template_vars['user'] = user
+    template_vars['reset_password_valid'] = reset_password_valid
+    template_vars['user_reset_password_link' ] = YMCPath.admin_users_reset_password_link(user.forgot_password_token)
+    template_vars['form'] = form
+
+    return  render(request, 'admin/users/password.html', template_vars)
+
+
+"""
+"""
+@force_login
+def reset_password(request, user_id=None):
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        raise Http404
+
+    if(request.method == 'POST'):
+        user.GenerateForgotPasswordToken()
+        user.save()
+
+        user_reset_password_link = YMCPath.admin_users_reset_password_link(user.forgot_password_token)
+        c = Context({'user': user, 'user_reset_password_link': user_reset_password_link})
+
+        # Build text email body...
+        email_text = Email.LoadTemplate('forgot_password_text', c)
+
+        # Build HTML email body...
+        email_html = Email.LoadTemplate('forgot_password_html', c)
+
+        #Subject...
+        subject = 'YMC Games - reset password request'
+
+        Email.Send(user.email, settings.EMAIL_FROM_ADDRESS, subject, email_text, email_html)
+
+        return HttpResponseRedirect(path.admin_users_password(user.id))
+
+    template_vars = build_template_vars(request)
+    template_vars['user_fullname'] = user.GetFullName()
+    template_vars['user'] = user
+
+    return  render(request, 'admin/users/reset-password.html', template_vars)
+
+
+"""
+"""
+@force_login
+@requires_admin
+def add_game(request, user_id=None):
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        raise Http404
+
+    if(request.method == 'POST'):
+        errors = {}
+        for games_id in dict(request.POST):
+            usersgames = UsersGames.Build({
+                'games_id': games_id,
+                'users_id': user.id,
+            })
+            try:
+                usersgames.full_clean()
+                usersgames.save()
+            except ValidationError as e:
+                errors += e.message_dict
+                continue
+        #print(len(errors))
+        if(len(errors) <= 0):
+            return HttpResponseRedirect(path.admin_users_show(user.id))
+
+    games =  Game.objects.exclude(id__in=user.games.values('id')).all()
+
+    template_vars = build_template_vars(request)
+    template_vars['user'] = user
+    template_vas['games'] = games
+
+    return render(request, 'admin/users/add_game.html', template_vars)
+"""
+"""
+@force_login
+@requires_admin
+def remove_game(request, user_id=None):
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        raise Http404
+
+    if(request.method == 'POST'):
+        errors = {}
+        for games_id in dict(request.POST):
+            try:
+                usersgames = UsersGames.objects.filter(games_id=games_id)
+                usersgames.delete()
+            except User.DoesNotExist:
+                continue
+
+        return HttpResponseRedirect(path.admin_users_show(user.id))
+
+    games = user.games.all()
+
+    template_vars = build_template_vars(request)
+    template_vars['user'] = user
+    template_vars['games'] = games
+    return render(request, 'admin/users/remove_game.html', template_vars)
+
+

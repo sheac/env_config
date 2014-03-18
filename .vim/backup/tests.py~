@@ -1,0 +1,386 @@
+# -*- coding: utf-8 -*-
+
+from ymc.lib import authentication as ApiAuthentication
+from ymc.lib import helpers
+
+from ymc.model import User
+from ymc.model import Game
+from ymc.model import Developer
+
+from django.test.client import Client
+from django.forms.models import model_to_dict
+from django.core.exceptions import ObjectDoesNotExist
+
+
+from django.utils.timezone import utc
+import datetime
+
+"""
+"""
+import unittest, json, re
+
+from django.test import TestCase
+from django.test import RequestFactory
+
+from api.views import users as ApiUsersView
+
+def test_cases():
+    return [
+        'test_generate_signature',
+        'test_register',
+        'test_login',
+        'test_login_facebook',
+        'test_sign',
+        'test_user',
+        'test_logout',
+        'test_developer_signup',
+    ]
+
+"""
+    AuthenticationTestCase
+"""
+class AuthenticationTestCase(TestCase):
+
+    API_FAIL = 0
+    API_SUCCESS = 1
+
+    """
+    # Build up a user object
+    """
+    def setUp(self):
+        values = dict(
+            username='stindill',
+            password='changeme',
+            email='scott@ymcnetwork.com',
+            first_name='Scott',
+            last_name='Tindill',
+        )
+
+        self.user = User.Build(values)
+        self.user.GenerateForgotPasswordToken()
+        self.user.login()
+
+
+        dev_values = dict(
+            name='YMC',
+        );
+
+        self.developer = Developer.Build(dev_values)
+
+        values = dict(
+            title='test',
+            developer_id = self.developer.id,
+            ymc_id='77777777777777777777777',
+        )
+
+        self.games = Game.Build(values)
+        self.games.save()
+
+        values = dict(
+            title='test allow login no register',
+            developer_id = self.developer.id,
+            ymc_id='99999999999999999999999',
+            allow_unregistered_login=True,
+        )
+
+        self.games_noreg = Game.Build(values)
+        self.games_noreg.save()
+
+
+
+
+        self.request_factory = RequestFactory()
+
+
+    """
+    # Not sure what to do here
+    """
+    def tearDown(self):
+        self.user = None
+
+    """
+    # Tests signature generation
+    """
+    def test_generate_signature(self):
+        data = model_to_dict(self.user)
+
+        for key, value in data.items():
+            print(key+" = "+str(value)+",")
+
+        print("SIGNING DATA: ")
+        # print(data)
+        signature1 = ApiAuthentication.Sign(data)
+        print(signature1)
+
+
+        data['_sig'] = signature1
+        signature2 = ApiAuthentication.Sign(data)
+        print(signature2)
+
+        self.assertEqual(signature1, signature2)
+
+    """
+    # Test Register
+    """
+    def test_register(self):
+        "Test /api/register uri"
+        client = Client()
+
+
+        print('\n========== test_register ==========\n')
+
+        user_register_data = [
+            {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser2', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': 'testuser2@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': '', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': '', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': '', 'email': '', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': '', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': '', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'testUser2', 'email': 'testuser2@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'garbage': 'trash'}, 'expect': self.API_FAIL},
+            {'data': {'username': '{POP{AOJOP*)(*y0y87yt97687$&$#&^T@YBXUHSGYX&(^(T@&*OGX', 'email': 'asjkdhkashdas@suahgdjhsgdja'}, 'expect': self.API_FAIL},
+            {'data': {}, 'expect': self.API_FAIL},
+            {'data': {'username': 'testing-duplicate-users', 'email': 'testduplicate@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'Testing-duplicate-users', 'email': 'testduplicate@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'Testing-duplicate-users', 'email': 'TestduplicatE@example.com', 'password': 'changeme3', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'Testing-duplicate-users', 'email': 'TestduplicatE@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': u"testingerererere@这个游戏规则.com", 'email': u"testingerererere@这个游戏规则.com", 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'testingNoEmail', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'email': 'testingNoUsername@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'email': 'testingNoUsernameexamplecom', 'password': 'changeme6', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'email': 'passwordtest@example.com', 'password': u'这个游戏规则', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+        ]
+
+        for register_data in user_register_data:
+            register_data['data']['_sig'] = ApiAuthentication.Sign(register_data['data'])
+            print(register_data['data'])
+            response = client.post('/api/users/register', data=register_data['data'], **{'wsgi.url_scheme': 'https'})
+
+            json_response = json.loads(response.content);
+            print(json_response)
+
+            self.assertEqual(json_response["status"], register_data['expect'])
+
+    """
+    # Test Login
+    """
+    def test_login(self):
+        "Test register, login and logout functionality"
+        client = Client()
+
+        print('\n========== test_login ==========\n')
+
+        # Register a new user...
+        print("Creating New User...")
+        new_user =  {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}
+        new_user['_sig'] = ApiAuthentication.Sign(new_user)
+
+        response = client.post('/api/users/register', data=new_user, **{'wsgi.url_scheme': 'https'})
+        #request = self.request_factory.post('/api/users/register', data=new_user)
+        #response = ApiUsersView.register(request)
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+
+        #login new user
+        print("Logging In User...")
+        response = client.post('/api/users/login', data=new_user, **{'wsgi.url_scheme': 'https'})
+        #request = self.request_factory.post('/api/users/login', data=new_user)
+        #response = ApiUsersView.login(request)
+
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+
+        print("Logging Out User...")
+        logout_data = {'token': json_response["response"]["access_token"], 'uid': json_response["response"]["uid"]}
+        logout_data['_sig'] = ApiAuthentication.Sign(logout_data)
+
+        print(logout_data)
+        request = self.request_factory.get('/api/users/logout', data=logout_data)
+        response = ApiUsersView.logout(request)
+
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response["status"], self.API_SUCCESS)
+
+
+        # Try logging in users
+        print("Logging in a bunch of users...")
+        user_login_data = [
+            {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'TestUser', 'email': 'testuser@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'TestUser', 'email': 'Testuser@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'testUser', 'email': 'Testuser@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'garbage': 'trash'}, 'expect': self.API_FAIL},
+            {'data': {'username': '{POP{AOJOP*)(*y0y87yt97687$&$#&^T@YBXUHSGYX&(^(T@&*OGX', 'email': 'asjkdhkashdas@suahgdjhsgdja'}, 'expect': self.API_FAIL},
+            {'data': {}, 'expect': self.API_FAIL},
+            {'data': {'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'testingNoEmail', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'email': 'testingNoUsername@example.com', 'password': 'changeme2', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'email': 'testingNoUsername@example.com', 'password': 'changeme2', 'gid': '99999999999999999999999'}, 'expect': self.API_SUCCESS},
+        ]
+
+        for login_data in user_login_data:
+            login_data['data']['_sig'] = ApiAuthentication.Sign(login_data['data'])
+            print(login_data['data'])
+            response = client.post('/api/users/login', data=login_data['data'], **{'wsgi.url_scheme': 'https'})
+
+            #request = self.request_factory.post('/api/users/login', data=login_data['data'])
+            #response = ApiUsersView.login(request)
+
+            json_response = json.loads(response.content)
+            print(json_response)
+
+            self.assertEqual(json_response["status"], login_data['expect'])
+
+
+    """
+    # Test Login Facebook
+    """
+    def test_login_facebook(self):
+        print('\n========== test_login facebook==========\n')
+        client = Client()
+
+        # Register a new user...
+        print("Creating New User...")
+        new_user =  {'gid': '77777777777777777777777', 'fbid': '564026600', 'fbtok': 'CAAIXFowimiwBAFHxPsku9EWiC5zgUhaZCQyKjqZC79lp4Dm5VvXeIF0daGycVS3UvG529QOlJdQRNDZCfSbxE9XApXaH1hhGUHYWTDrZCf6CGX8vm5vkixa2AlSPsxOkN1waECEvnuwR1LmNlZCSHoCvLqAa0sdXVP8Vi0q41OGTC6hXBQCtw6RAttifrvUEZD'}
+        new_user['_sig'] = ApiAuthentication.Sign(new_user)
+
+        response = client.post('/api/users/login', data=new_user, **{'wsgi.url_scheme': 'https'})
+        #request = self.request_factory.post('/api/users/register', data=new_user)
+        #response = ApiUsersView.register(request)
+        json_response = json.loads(response.content)
+        print(json_response)
+        self.assertEqual(json_response["status"], self.API_FAIL)
+
+    """
+    # Test Sign
+    """
+    def test_sign(self):
+        data = {u'username': u'', u'first_name': u'', u'last_name': u'', u'_sig': u'44936f11b812f0bd6e05669489c1d55e991726cd0f5d7085d3ac1c0b0fc04b49', u'gid': u'b8b73492dac311e284c212313b0ace15', u'password': u'test', u'email': u'\u505c\u653e\u70b9.com'}
+        print("SIGNING...");
+        print(data);
+        sig = ApiAuthentication.Sign(data)
+        print(sig)
+
+
+    """
+    # Test User
+    """
+    def test_user(self):
+        print('\n========== test_user==========\n')
+        session_data = dict(
+            token=self.user.access_token,
+        )
+
+        #print(model_to_dict(self.user))
+        #print(session_data)
+
+        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+        response = ApiUsersView.read(request, self.user.id)
+        json_response = json.loads(response.content)
+        print(json_response)
+
+        update_data = dict(
+            token=self.user.access_token,
+            gender=1,
+        )
+        request = self.request_factory.post('/api/users/update/'+str(self.user.id), data=update_data)
+        response = ApiUsersView.update(request, self.user.id)
+        json_response = json.loads(response.content)
+        print(json_response)
+
+#    def test_user_with_game_list(self):
+#
+#        print('\n========== test_user_with_game_list ==========\n')
+#
+#        user_register_data = [
+#            {'username': 'testUser', 'email': 'testuser@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'},
+#            {'username': 'testUser2', 'email': 'testuser2@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'},
+#            {'username': 'testUser3', 'email': 'testuser3@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'},
+#        ]
+#
+#        # Register test users
+#        for register_data in user_register_data:
+#            register_data['_sig'] = ApiAuthentication.Sign(register_data)
+#            #print(register_data)
+#            response = client.post('/api/users/register', data=register_data], **{'wsgi.url_scheme': 'https'})
+#
+#            json_response = json.loads(response.content);
+#            #print(json_response)
+#
+#        session_data = dict(
+#            token=self.user.access_token,
+#        )
+#
+#        #print(model_to_dict(self.user))
+#        #print(session_data)
+#
+#        request = self.request_factory.get('/api/users/'+str(self.user.id), data=session_data)
+#        response = ApiUsersView.read(request, self.user.id)
+#        json_response = json.loads(response.content)
+#        print(json_response)
+#
+#        update_data = dict(
+#            token=self.user.access_token,
+#            gender=1,
+#        )
+#        request = self.request_factory.post('/api/users/update/'+str(self.user.id), data=update_data)
+#        response = ApiUsersView.update(request, self.user.id)
+#        json_response = json.loads(response.content)
+#        print(json_response)
+
+
+
+    def test_logout(self):
+        print('\n========== test_logout==========\n')
+
+        session_data = dict(
+            token="\\xE0\\x22\xDD\\x906\\xA7\\x0E\\x18\\xC2\\xAE\\xE1-\\x9A8;\\xA3\\xB3\\x9F\\x04\\xE76\\x1C\\xB5\\x91\\xE0\\x85\\xE9\\xD0\\xC0\\xA5U\\x1D@",
+            uid=511804320,
+        )
+
+        session_data['_sig'] = ApiAuthentication.Sign(session_data)
+
+        request = self.request_factory.get('/api/users/logout', data=session_data)
+        response = ApiUsersView.logout(request)
+        print(response)
+
+
+    def test_developer_signup(self):
+        print('\n========== test_logout==========\n')
+
+        client = Client()
+
+        # Try logging in users
+        print("Logging in a bunch of developers...")
+        developer_signup_data = [
+            {'data': {'username': 'developer_user', 'email': 'devuser1@example.com', 'password': 'changeme', 'gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'developer_user', 'email': 'devuser1@example.com', 'password': 'changeme', 'developer_name': 'Scott\'s Crazy Game Studio','gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+            {'data': {'username': 'developer_user', 'email': 'devuser1@example.com', 'password': 'changeme', 'developer_name': u'erere@这个游戏规则','gid': '77777777777777777777777'}, 'expect': self.API_FAIL},
+            {'data': {'username': 'developer_user', 'email': 'devuser2@example.com', 'password': 'changeme', 'developer_name': u'erere@这个游戏规则','gid': '77777777777777777777777'}, 'expect': self.API_SUCCESS},
+        ]
+
+        for signup_data in developer_signup_data:
+            signup_data['data']['_sig'] = ApiAuthentication.Sign(signup_data['data'])
+            print(signup_data['data'])
+            response = client.post('/api/developers/register', data=signup_data['data'], **{'wsgi.url_scheme': 'https'})
+
+            json_response = json.loads(response.content)
+            print(json_response)
+
+            self.assertEqual(json_response["status"], signup_data['expect'])
+
+
+
+
+        print("\n\n\n\n\n")

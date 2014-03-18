@@ -1,0 +1,56 @@
+import json
+from django.http import HttpResponse
+
+"""
+*
+"""
+ERROR_STATUS = 0
+SUCCESS_STATUS = 1
+
+def default(obj):
+    import calendar, datetime
+
+    if (isinstance(obj, datetime.datetime)):
+        return calendar.timegm(obj.utctimetuple())
+
+    return None
+
+"""
+*
+"""
+def Success(response):
+
+    response_object = dict(
+        status = SUCCESS_STATUS,
+        response = response,
+    )
+
+    return HttpResponse(
+            content=json.dumps(response_object, default=default),
+            content_type='application/json')
+
+"""
+*
+"""
+def Error(response, message):
+
+    response_object = dict(
+        status = ERROR_STATUS,
+        response = response,
+        message = message,
+    )
+
+    print("\n\nresponse_object: " + str(response_object))
+
+    return HttpResponse(
+            content=json.dumps(response_object, default=default),
+            content_type='application/json')
+
+"""
+*
+"""
+def Custom(content, content_type='application/json'):
+
+    return HttpResponse(
+            content=content,
+            content_type=content_type)

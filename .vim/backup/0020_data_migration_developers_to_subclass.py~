@@ -1,0 +1,14 @@
+def forwards(self, orm):
+
+    for d in orm.SubclassDeveloper.objects.all():
+        sd.delete()
+
+    for d in orm.Developer.objects.all().values():
+        sd = orm.SubclassDeveloper()
+        sd.id = d['id']
+        sd.created_at = d['created_at']
+        sd.name = d['name']
+        sd.save()
+
+def backwards(self, orm):
+    raise RuntimeError("Cannot reverse this migration -- consider deleting all records in the table")

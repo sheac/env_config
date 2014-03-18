@@ -1,0 +1,155 @@
+/* static vars */
+var OXR_APP_TOKEN  = '85686f70972a40e5acaa9c153b4d22d0';
+var APPLES_CUT = 0.3;
+var RATES_DOC_ID_BASE = 'rates_for_';
+var RATES_COLLECTION_NAME = 'exchange_rates';
+
+var CRON_STRING_DAILY = "0 0 * * *",
+    CRON_STRING_SECONDLY = "* * * * * *";
+
+var STATUS_UNINITIALIZED    = 0,
+    STATUS_INITIALIZING     = 1,
+    STATUS_INITIALIZED      = 2,
+    STATUS_ERROR            = (-1);
+
+
+
+/* global vars */
+var initStatus = STATUS_UNINITIALIZED;
+
+
+
+/* db vars */
+var db      = require('../../reporter/database').db,
+    xrc     = db.collection(RATES_COLLECTION_NAME);
+
+
+
+/* libraries */
+var fx      = require('money'),
+    oxr     = require('open-exchange-rates'),
+    moment  = require('moment'),
+    cronJob = require('cron').CronJob;
+
+
+
+
+/* helpers */
+
+var saveNewRates = function(oxr, callback) {
+    console.log("Attempting to save rates to DB");
+    var doc = constructRatesDoc(oxr);
+    xrc.save(doc, function(err, doc) {
+        if (err) {
+            var errStr = "Error saving new rates to database: " + err;
+            console.error(errStr);
+            initStatus = STATUS_ERROR;
+            callback(errStr);
+            return;
+        }
+        console.log("Successfully saved today's rates to the DB");
+        initStatus = STATUS_INITIALIZED;
+        callback();
+    });
+};
+
+var genTodaysRatesDocId = function() {
+    return RATES_DOC_ID_BASE + moment().utc().format('MMM-DD-YYYY');
+};
+
+var constructRatesDoc = function(oxr) {
+    return {
+        _id: genTodaysRatesDocId(),
+        oxr: oxr,
+    };
+};
+
+var setTodaysRatesFromOxrObj = function(oxrInner) {
+    oxr = oxrInner;
+    fx.rates = oxr.rates;
+    fx.base = oxr.base;
+    console.log("In-memory rates set");
+};
+
+var setTodaysRatesFromServer = function(callback) {
+    console.log("Attempting to obtain exchange rates from server...");
+    oxr.latest(function() {
+        console.log("Rates obtained");
+        setTodaysRatesFromOxrObj(oxr);
+        saveNewRates(oxr, callback);
+    });
+};
+
+var setTodaysRatesFromDocument = function(doc, callback) {
+    setTodaysRatesFromOxrObj(doc.oxr, callback);
+};
+
+var setTodaysRates = function(callback) {
+    console.log("Setting today's exchange rates");
+    var todaysDocId = genTodaysRatesDocId();
+    console.log("Searching for todays rates in DB with '_id': '"+todaysDocId+"'...");
+    xrc.findOne(
+            {_id: todaysDocId},
+            function(err, doc) {
+                if (err) {
+                    console.error("Error obtaining exhange rates from DB:\n", err, "\n");
+                    setTodaysRatesFromServer(callback);
+                } else if (!doc) {
+                    console.log("Unable to find rates in DB");
+                    setTodaysRatesFromServer(callback);
+                } else {
+                    console.log("Today's rates found in DB");
+                    setTodaysRatesFromDocument(doc, callback);              
+                }
+        });
+};
+
+
+
+
+
+/* exports */
+
+var toUSD = function(amt, currency) {
+    if (!getStatus == STATUS_INITIALIZED) {
+        return null;
+    }
+    return fx(amt).from(currency).to('USD');
+};
+
+var toUSDRevenue = function(amt, currency) {
+    if (!getStatus == STATUS_INITIALIZED) {
+        return null;
+    }
+    return toUSD * (1.0 = APPLES_CUT);
+}
+
+var updateExchangeRates = function() {
+    setTodaysRates(function(err) {
+        if (err) {
+            console.error(err);
+        }
+        console.log("Successfully updateExchangeRatesd");
+    });
+}
+
+var getStatus = function() {
+    return initStatus;
+}
+
+var initialize = function(callback) {
+    if (!callback || typeof(callback) == 'undefined') {
+        console.error("You must supply a callback to the initialize function");
+    }
+    oxr.set({app_id: OXR_APP_TOKEN});
+    setTodaysRates(callback);
+    new cronJob(CRON_STRING_SECONDLY, updateExchangeRates)
+};
+
+
+exports.toUSD               = toUSD;
+exports.toUSDRevenue        = toUSDRevenu;
+exports.updateExchangeRates = updateExchangeRates;
+exports.getStatus           = getStatus;
+exports.initialize          = initialize;
+

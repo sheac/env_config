@@ -1,0 +1,29 @@
+<?php
+
+class create_contact_messages {
+
+    public static function up() 
+    {
+
+        $contact_messages = "CREATE TABLE contact_messages (
+                    id INTEGER NOT NULL AUTO_INCREMENT,
+                    name VARCHAR(255) NOT NULL, 
+                    email VARCHAR(255) NOT NULL, 
+                    subject VARCHAR(255) NOT NULL, 
+                    reason ENUM('GAME_STATUS', 'GAME_SUBMIT', 'B_2_B', 'SITE_BUG', 'OTHER') NOT NULL,
+                    message TEXT NOT NULL,
+                    sent_at DATETIME DEFAULT NULL,
+                    PRIMARY KEY (id) 
+                    );";
+                
+
+        DB::query(null, $contact_messages)->execute();
+    }
+
+    public static function down() 
+    {
+        DB::query(null, "DROP TABLE contact_messages;")->execute();
+    }
+}
+
+?>

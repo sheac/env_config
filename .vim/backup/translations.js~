@@ -1,0 +1,751 @@
+var translations = {
+    EN: {
+        notifications: {
+            retention_selected: 'Retention selected. Please select units (Days, Weeks or Months) to view your retention data',
+            revenue_data_updated: 'Data updated. Please (re-)navigate to the page on which you want to display the new data',
+            revenue_data_update_error: 'Failed to update data. Please try again later...',
+            game_selected_cta: "{{game_title}} selected. Please select an item on the left sidebar to view data for this project.",
+            timezone_selected: 'New timezone selected. Please (re-)navigate to the page on which you want to display the new data',
+            timezone_selection_failure: 'Failed to change the timezone. Please try again later...',
+            collection_changed: 'Collection changed. Please (re-)navigate to the page on which you want to display the new data',
+        },
+        landing_page: {
+            twitter_button: "Twitter",
+            main_motto: "Measure, Analyze, Insight",
+            sub_motto: "Scalable. Free. Mobile",
+            cta: "Let's start",
+            already_registered: "Already have an account?",
+            email_label: "Email address",
+            password_label: "Password",
+            login_button: "Sign In",
+            col1_header: "Developers -- do real-time analysis",
+            col1_p1: "There are many metrics that measure engagement; page views are not one of them. Make your product better by measuring actions, not page views.",
+            col1_p2: "For years, companies have pushed page views as a primary measure of success. Page view counts are popular because they are easy to " +
+                "report, but ultimately cannot tell you how engaged your visitors are.",
+            col1_p3: "YMCA lets you measure what customers do in your app by reporting actions, not page views.",
+            col2_header: "Game APIs",
+            col2_p1: "YMCA has extensive documentation, compatibility and tests/examples for all major gaming platforms.",
+            col2_li1: "iOS/Objective C",
+            col2_li2: "Android/NDK",
+            col2_li3: "Unity3d (coming soon)",
+            col2_li4: "HTML5/Javascript (coming soon)",
+            col2_li5: "ActionScript 3 (coming soon)",
+            footer_copyright: "&copy; 2013 YMC Network. All right reserved.",
+        },
+        dashboard: {
+            header: {
+                title: "YA Dashboard",
+                options_button: "Options",
+                logout_button: "Logout",
+            },
+            metrics_sidebar: {
+                title: "Dashboard",
+                revenue: "Revenue",
+                arpu: "ARPU",
+                arppu: "ARPPU",
+                user: "User",
+                first_launches: "First Launches",
+                dau_wau_mau: "DAU/WAU/MAU",
+                ymc_registers: "YMC Registers",
+                ymc_logins: "YMC Logins",
+                all_buyers: "All Buyers",
+                new_buyers: "New Buyers",
+                repeat_buyers: "Repeat Buyers",
+                ymc_retention: "YMC Retention",
+                retention: "Retention",
+                session: "Session",
+                session_length: "Session Length",
+                tools: "Tools",
+                sdk_debug: "SDK Debug View",
+                crashes: "Crashes",
+            },
+        },
+        charts: {
+            titles: {
+                revenue: "Revenue",
+                arpu: "ARPU",
+                arppu: "ARPPU",
+                user: "User",
+                first_launches: "First Launches",
+                dau_wau_mau: "DAU/WAU/MAU",
+                dau: "Daily Active Users",
+                wau: "Weekly Active Users",
+                mau: "Monthly Active Users",
+                ymc_registers: "YMC Registers",
+                ymc_logins: "YMC Logins",
+                all_buyers: "All Buyers",
+                new_buyers: "New Buyers",
+                repeat_buyers: "Repeat Buyers",
+                ymc_retention: "YMC Retention",
+                retention: "Retention",
+                session: "Session",
+                session_length: "Session Length",
+                tools: "Tools",
+                sdk_debug: "SDK Debug View",
+                crashes: "Crashes",
+            },
+            by_time_interval: {
+                'day': " by day", /* notice the space at the beginning of the string */
+                'week': " by week", /* notice the space at the beginning of the string */
+                'month': " by month", /* notice the space at the beginning of the string */
+            },
+            time_interval_options: {
+                '30_days': "30 Days",
+                '24_weeks': "24 Weeks",
+                '12_months': "12 Months",
+            },
+            by_currency: {
+                USD: " in USD", /* notice the space at the beginning of the string */
+            },
+            table_date_header: 'Time segment start:',
+            chart_text: {
+                total_crashes: "Total Crashes",
+                users_affected: "Users Affected",
+                time_header: "Time",
+                users_header: "Users",
+                sdk_type_header: "Type",
+                sdk_time_header: "Time",
+                sdk_ip_address_header: "IP Address",
+                sdk_reload_button: "Reload",
+                sdk_help_link: "help",
+                interval_headers: {
+                        day1: "Day 1",
+                        day2: "Day 2",
+                        day3: "Day 3",
+                        day4: "Day 4",
+                        day5: "Day 5",
+                        day6: "Day 6",
+                        day7: "Day 7",
+                        day8: "Day 8",
+                        day9: "Day 9",
+                        day10: "Day 10",
+                        day11: "Day 11",
+                        day12: "Day 12",
+                        week1: "Week 1",
+                        week2: "Week 2",
+                        week3: "Week 3",
+                        week4: "Week 4",
+                        week5: "Week 5",
+                        week6: "Week 6",
+                        week7: "Week 7",
+                        week8: "Week 8",
+                        week9: "Week 9",
+                        week10: "Week 10",
+                        week11: "Week 11",
+                        week12: "Week 12",
+                        month1: "Month 1",
+                        month2: "Month 2",
+                        month3: "Month 3",
+                        month4: "Month 4",
+                        month5: "Month 5",
+                        month6: "Month 6",
+                        month7: "Month 7",
+                        month8: "Month 8",
+                        month9: "Month 9",
+                        month10: "Month 10",
+                        month11: "Month 11",
+                        month12: "Month 12",
+                },
+                timezone_used: 'Timezone used for date-boundaries: ',
+            },
+        },
+        info_modal: {
+            revenue: {
+                header: "Revenue",
+                body:
+                    "<p>" +
+                    "   The total of in-app purchase money paid by users in a given time period. Note that this is not equal to the funds paid to YMC" +
+                    "   for those in-app purchases, since third-parties (Apple, associate developers, etc) will take a portion of what is paid by the user." +
+                    "<p>",
+            },
+            arpu: {
+                header: "ARPU",
+                body:
+                    "<p>" +
+                    "   The total of in-app purchase money paid by users in a given time period divided by the number of active users during that period. " +
+                    "   Note that revenue is not equal to the funds paid to YMC for those in-app purchases, since third parties " +
+                    "   (Apple, associate developers, etc) will take a portion of what is paid by the user." +
+                    "</p>"+
+                    "<h5>" +
+                    "   Formula:" +
+                    "</h5>" +
+                    "<p>" +
+                    "   <code>ARPU = Revenue / Total Active Users </code>" +
+                    "</p>",
+            },
+            arppu: {
+                header: "ARPPU",
+                body:
+                    "<p>" +
+                    "   The total of in-app purchase money paid by users in a given time period divided by the number of active, <strong>paying</strong> users" +
+                    "   during that period. Note that revenue is not equal to the funds paid to YMC for those in-app purchases, since third parties " +
+                    "   (Apple, associate developers, etc) will take a portion of what is paid by the user. Moreover, a user who is active, but has not " +
+                    "   made purchases, during a given time period will not count towards the total in the denominator of this formula." +
+                    "</p>"+
+                    "<h5>" +
+                    "   Formula:" +
+                    "</h5>" +
+                    "<p>" +
+                    "   <code>ARPPU = Revenue / Total Converted Users (a.k.a \"Buyers\")</code>" +
+                    "</p>",
+            },
+            first_launches: {
+                header: "First Launches",
+                body:
+                    "<p>" +
+                    "   The the number of times in a given time period that any device launches a freshly-installed copy of the game. " +
+                    "</p>" +
+                    "<p>" +
+                    "   For example, if a user installs game X and launches it, this counts towards the total. If the user uninstalls, and the re-installs, " +
+                    "   the game, then launching it will <strong>also</strong> count towards the total, since there is no way for an installation of " +
+                    "   the game to tell if it is the first on that device." +
+                    "</p>",
+            },
+            user_start: {
+                header: "DAU/WAU/MAU",
+                body: 
+                    "<p>" +
+                    "   The number of distinct users who start or open the game on their device in a given time period. This is compiled in terms of Daily Active " +
+                    "   Users (DAU), Weekly (WAU), or Monthly Active Users (MAU)." +
+                    "</p>",
+            },
+            user_register: {
+                header: "YMC Registers",
+                body:
+                    "<p>" +
+                    "   The total number of distinct users who register themselves to the YMC user system in a given time period." +
+                    "</p>",
+            },
+            all_users: {
+                header: "YMC Logins",
+                body:
+                    "<p>" +
+                    "   The total number of distinct login events (perhaps many logins per user) to the YMC user system in a given time period." +
+                    "</p>",
+            },
+            all_buyers: {
+                header: "All Buyers",
+                body:
+                    "<p>" +
+                    "   The total number of users who have made purchases in a given time period." +
+                    "</p>",
+            },
+            new_buyers: {
+                header: "New Buyers",
+                body:
+                    "<p>" +
+                    "   <strong>Currently:</strong> the number of users who have made only one purchase ever." +
+                    "</p>",
+            },
+            repeated_buyers: {
+                header: "Repeat Buyers",
+                body:
+                    "<p>" +
+                    "   <strong>Currently:</strong> the number of users who have made more than one purchase ever." +
+                    "</p>",
+            },
+            retention: {
+                header: "YMC Retention",
+                body:
+                    "<p>" +
+                    "   The ratio of the number of retained users to the number of user initially acquired in a given time period. " +
+                    "</p>" +
+                    "<p>" +
+                    "   For this type of \"retention\", a user " +
+                    "   is \"initially acquired\" when they <strong>register to our YMC games user system</strong>, and are \"retained\" only as long " +
+                    "   as they continue to <strong>login to our system</strong>." +
+                    "</p>",
+            },
+            retention2: {
+                header: "Retention",
+                body:
+                    "<p>" +
+                    "   The ratio of the number of retained users to the number of user initially acquired in a given time period. " +
+                    "</p>" +
+                    "<p>" +
+                    "   For this type of \"retention\", a user " +
+                    "   is \"initially acquired\" when they <strong>install the game to their device</strong>, and are \"retained\" only as long as " +
+                    "   they continue to <strong>start the game on their device</strong>." +
+                    "</p>",
+            },
+            session_length: {
+                header: "Session Length",
+                body:
+                    "<p>" +
+                    "   The average length of user sessions in a given time period. " +
+                    "</p>" +
+                    "<p>" +
+                    "   A session is defined as the time between log in and log out. Sessions of duration less than 5 seconds are excluded." +
+                    "</p>" +
+                    "<h5>" +
+                    "   Formulas:"+
+                    "</h5>" +
+                    "<p>" +
+                    "   <code>Single User Session Time = Total User Session Time/ Number of Sessions</code>" +
+                    "   <br/>" +
+                    "   <br/>" +
+                    "   <code>Average User Session Time =   (Sum of all Single User Session Time)/ Users</code>" +
+                    "</p>",
+            },
+            sdk_debug: {
+                header: "SDK Debug",
+                body: 
+                    "<h4>" + 
+                    "    Purpose and Scope" + 
+                    "</h4>" + 
+                    "<p>" + 
+                    "    The SDK Debug View is a way for iOS developers to verify that they have properly implemented the YMC SDK." + 
+                    "</p>" + 
+                    "<h4>" + 
+                    "    Workflow" + 
+                    "</h4>" + 
+                    "<p>" + 
+                    "    <ol>" + 
+                    "        <li>" + 
+                    "            Instrument your code with the YMC SDK, according to the documentation" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            Create a build of your app that is not an App Store distribution build -- e.g. run your app in the Xcode iOS Simulator" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            Navigate to the analytics page of your app, sign in and click on the SDK Debug View menu item" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            Perform actions that should generate and send analytics SDK events" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            Click the Reload button to fetch the most recently-sent ananlytics events" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            Use the event description (e.g. <code>Time</code>, <code>IP Address</code>, etc) to identify events sent by your device." + 
+                    "            Details of the event can be verified by clicking the button to expand the event item and display the actual event JSON." + 
+                    "        </li>" + 
+                    "    </ol>" + 
+                    "</p>" + 
+                    "<p>" + 
+                    "    If you don't see your events showing up, retry from the start." + 
+                    "</p>" + 
+                    "<h4>" + 
+                    "    Custom Events" + 
+                    "</h4>" + 
+                    "<p>" + 
+                    "The SDK Debug View also supports custom events that you create, define and send yourself, such as <code>level-up</code>, or <code>gain-collectable-05</code>." + 
+                    "    Again, complete JSON data from these can be viewed by clicking to expand the item." + 
+                    "</p>" + 
+                    "<h4>" + 
+                    "    Technical Stuff" + 
+                    "</h4>" + 
+                    "<p>" + 
+                    "    The SDK Debug View shows YMC SDK analytics events sent under any of the following conditions:" + 
+                    "</p>" + 
+                    "<ul>" + 
+                    "    <li>" + 
+                    "        iOS Simulators running from Xcode" + 
+                    "    </li>" + 
+                    "    <li>" + 
+                    "        Development builds uploaded from Xcode onto a device plugged into the machine running Xcode" + 
+                    "    </li>" + 
+                    "    <li>" + 
+                    "        iOS Ad hoc builds" + 
+                    "    </li>" + 
+                    "</ul>" + 
+                    "<p>" + 
+                    "    That is, pretty much anything that's not an Apple App Store distribution build, or non-iOS. (That's right --" + 
+                    "    the SDK Debug View only supports iOS so far)." + 
+                    "</p>" + 
+                    "<p>" + 
+                    "    Events are sent automatically to the Debug View and will not contribute to the data that is represented by our" + 
+                    "    charts for the major KPIs, such as <i>Active Users</i> or <i>ARPU</i>." + 
+                    "</p>",
+            },
+            crash: {
+                header: "Crashes",
+                body: 
+                    "<p>" +
+                    "   The number of times the app crashes on any device in a given time period." +
+                    "</p>",
+            },
+            close_button: "Close",
+        },
+        language: "Language",
+        english: "English",
+        chinese: "Chinese",
+        timezone: "Timezone",
+        gmt: "GMT",
+        pacific: "Pacific (PST/PDT)",
+        games: "Games",
+        chart: " Chart", /* Note!! This has a leading space */
+        collections: {
+            collection: 'Collection',
+            events: 'Live/Production Events',
+            sdk_debug: 'SDK Debug Events',
+        },
+    },
+
+    ZH: {
+        notifications: {
+            retention_selected: '选择了保留率。请选择单位（天，周或月）来查看您的数据保留',
+            revenue_data_updated: '数据更新了。请（再）浏览到您要显示新数据的页面',
+            revenue_data_update_error: '数据更新失败。请稍后再试...',
+            game_selected_cta: "选取了{{game_title}}。请在左侧边栏中选择一个项目来查看数据。",
+            timezone_selected: '新时区已选择。请(再)导航到您要显示新数据的页面',
+            timezone_selection_failure: '时区转换失败。请稍后再试...',
+            collection_changed: 'TRANSLATION_MISSING: Collection changed. Please (re-)navigate to the page on which you want to display the new data',
+        },
+        landing_page: {
+            twitter_button: "推特",
+            main_motto: "测量，分析，洞察",
+            sub_motto: "扩展性。免费。行动",
+            cta: "开始使用",
+            already_registered: "已经有帐号了？",
+            email_label: "电子邮件地址",
+            password_label: "密码",
+            login_button: "登入",
+            col1_header: "开发商 - 做即时分析",
+            col1_p1: "有许多方法可衡量参与指数;页面浏览量不是其中之一。不要用页面浏览量，使用动作测量－让您的产品变的更好。",
+            col1_p2: "多年来，许多公司推见页面浏览量是成功的首要指数。页面浏览次数很受欢迎，因为它们很容易衡量，但最终不能告诉你用户的参与度。",
+            col1_p3: "YMCA 让你测量用户在应用程序里做的行动量，而不是页面浏览量。",
+            col2_header: "游戏 APIs",
+            col2_p1: "YMCA 有丰富的支持文档，兼容性和测试/例子为所有主要游戏平台。",
+            col2_li1: "iOS/Objective C",
+            col2_li2: "Android/NDK",
+            col2_li3: "Unity3d (即将推出)",
+            col2_li4: "HTML5/Javascript (即将推出)",
+            col2_li5: "ActionScript 3 (即将推出)",
+            footer_copyright: "&copy; 2013 YMC Network. 版权所有。",
+        },
+        dashboard: {
+            header: {
+                title: "YA 控制板",
+                options_button: "选项",
+                logout_button: "登出",
+            },
+            metrics_sidebar: {
+                title: "控制面板",
+                revenue: "收入",
+                arpu: "用户平均收益",
+                arppu: "付费用户平均收益",
+                user: "用户",
+                first_launches: "初次启动",
+                dau_wau_mau: "活跃用户",
+                ymc_registers: "YMC 注册",
+                ymc_logins: "YMC 登入",
+                all_buyers: "所有买家",
+                new_buyers: "新买家",
+                repeat_buyers: "重复买家",
+                ymc_retention: "YMC 保留率",
+                retention: "保留率",
+                session: "会期",
+                session_length: "会期时间",
+                tools: "工具",
+                sdk_debug: "SDK调试视图",
+                crashes: "死机",
+            },
+        },
+        charts: {
+            titles: {
+                revenue: "收入",
+                arpu: "用户平均收益",
+                arppu: "付费用户平均收益",
+                user: "用户",
+                first_launches: "初次启动",
+                dau_wau_mau: "日／周／月 活跃用户",
+                dau: "日活跃用户",
+                wau: "每周活跃用户",
+                mau: "每月活跃用户",
+                ymc_registers: "YMC Registers",
+                ymc_logins: "YMC 登入",
+                all_buyers: "所有买家",
+                new_buyers: "新买家",
+                repeat_buyers: "重复买家",
+                ymc_retention: "YMC 保留率",
+                retention: "保留率",
+                session: "会期",
+                session_length: "会期时间",
+                tools: "工具",
+                sdk_debug: "SDK调试视图",
+                crashes: "死机",
+            },
+            by_time_interval: {
+                'day': " 按天", /* notice the space at the beginning of the string */
+                'week': " 按周", /* notice the space at the beginning of the string */
+                'month': " 按月", /* notice the space at the beginning of the string */
+            },
+            time_interval_options: {
+                '30_days': "30 天",
+                '24_weeks': "24 周",
+                '12_months': "12 个月",
+            },
+            by_currency: {
+                USD: " 以美元", /* notice the space at the beginning of the string */
+            },
+            table_date_header: '时间段起点',
+            chart_text: {
+                total_crashes: "总计死机",
+                users_affected: "受影响的用户",
+                time_header: "时间",
+                users_header: "用户",
+                sdk_type_header: "类型",
+                sdk_time_header: "时间",
+                sdk_ip_address_header: "IP 位子",
+                sdk_reload_button: "刷新",
+                sdk_help_link: "帮助",
+                interval_headers: {
+                        day1: "1 天",
+                        day2: "2 天",
+                        day3: "3 天",
+                        day4: "4 天",
+                        day5: "5 天",
+                        day6: "6 天",
+                        day7: "7 天",
+                        day8: "8 天",
+                        day9: "9 天",
+                        day10: "10 天",
+                        day11: "11 天",
+                        day12: "12 天",
+                        week1: "1 周",
+                        week2: "2 周",
+                        week3: "3 周",
+                        week4: "4 周",
+                        week5: "5 周",
+                        week6: "6 周",
+                        week7: "7 周",
+                        week8: "8 周",
+                        week9: "9 周",
+                        week10: "10 周",
+                        week11: "11 周",
+                        week12: "12 周",
+                        month1: "第 1 月",
+                        month2: "第 2 月",
+                        month3: "第 3 月",
+                        month4: "第 4 月",
+                        month5: "第 5 月",
+                        month6: "第 6 月",
+                        month7: "第 7 月",
+                        month8: "第 8 月",
+                        month9: "第 9 月",
+                        month10: "第 10 月",
+                        month11: "第 11 月",
+                        month12: "第 12 月",
+                },
+                timezone_used: '当前使用时区日期范围：',
+            },
+        },
+        info_modal: {
+            revenue: {
+                header: "收入 (Revenue)",
+                body:
+                    "<p>" +
+                    "   总共在一个时间内用户内购付的钱。请注意，这不等于支付给YMC资金，因为第三方（苹果，联营开发商等）将采取一部分用户付的钱。" +
+                    "<p>",
+            },
+            arpu: {
+                header: "用户平均收益 (ARPU)",
+                body:
+                    "<p>" +
+                    "	在一个时间内所有用户内购合计除以所有在同一个时间内的跃用户。请注意，这不等于支付给YMC资金，因为第三方（苹果，联营开发商等）将采取一部分用户付的钱。" +
+                    "</p>"+
+                    "<h5>" +
+                    "   公式:" +
+                    "</h5>" +
+                    "<p>" +
+                    "   <code>用户平均收益 = 收入 / 所有跃用户 </code>" +
+                    "</p>",
+            },
+            arppu: {
+                header: "付费用户平均收益 (ARPPU)",
+                body:
+                    "<p>" +
+                    "	在一个时间内所有用户内购合计除以所有在同一个时间内的<strong>付费</strong>跃用户。请注意，这不等于支付给YMC资金，因为第三方（苹果，联营开发商等）将采取一部分用户付的钱。跃用户在时间内没有内购不会被算在内。" +
+                    "</p>"+
+                    "<h5>" +
+                    "   公式:" +
+                    "</h5>" +
+                    "<p>" +
+                    "   <code>付费用户平均收益 = 收入 / 总转换用户 （\"买者\")</code>" +
+                    "</p>",
+            },
+            first_launches: {
+                header: "初次启动 (First Launches)",
+                body:
+                    "<p>" +
+                    "   第一次一个设备启动一个全新安装的游戏数量。 " +
+                    "</p>" +
+                    "<p>" +
+                    "   例如，如果用户安装游戏X并启动它，这个会算在总数内。如果用户卸载，并重新安装游戏，然后启动它<strong>也会</strong>算在总数内，因为没有办法安装的游戏判断它是第一次安装。" +
+                    "</p>",
+            },
+            user_start: {
+                header: "日活跃用户 (DAU)",
+                body: 
+                    "<p>" +
+                    "   不同的用户启动或打开游戏装置上的数量。" +
+                    "</p>",
+            },
+            user_register: {
+                header: "YMC 注册 (YMC Registers)",
+                body:
+                    "<p>" +
+                    "   不同用户的总数注册到YMC用户系统。" +
+                    "</p>",
+            },
+            all_users: {
+                header: "YMC 登入 (YMC Login)",
+                body:
+                    "<p>" +
+                    "   不同登录事件的总数（用户或许多次登录）到YMC用户系统。" +
+                    "</p>",
+            },
+            all_buyers: {
+                header: "所有买家 (All Buyers)",
+                body:
+                    "<p>" +
+                    "   购买的用户总数。" +
+                    "</p>",
+            },
+            new_buyers: {
+                header: "新买家 (New Buyers)",
+                body:
+                    "<p>" +
+                    "   <strong>目前</strong>所有曾经购买的用户数。" +
+                    "</p>",
+            },
+            repeated_buyers: {
+                header: "重复买家 (Repeat Buyers)",
+                body:
+                    "<p>" +
+                    "   <strong>目前：</strong>曾经内购超过一次的用户数量。" +
+                    "</p>",
+            },
+            retention: {
+                header: "YMC 保留率 (YMC Retention)",
+                body:
+                    "<p>" +
+                    "   保留的用户数量对于最初获得用户的数量的比率。" +
+                    "</p>" +
+                    "<p>" +
+                    "   对于这种类型的“保留”，当用户注册到我们的YMC游戏用户系统会被算为“最初收购”，并算在“保留”内只要他们继续登录到我们的系统。" +
+                    "</p>",
+            },
+            retention2: {
+                header: "保留率 (Retention)",
+                body:
+                    "<p>" +
+                    "   保留的用户数量对于最初获得用户的数量的比率。" +
+                    "</p>" +
+                    "<p>" +
+                    "  对于这种类型的“保留”，当用户安装游戏时会被算为“最初收购”，并算在“保留”内只要他们继续启动游戏。" +
+                    "</p>",
+            },
+            session_length: {
+                header: "会期时间 (Session Length)",
+                body:
+                    "<p>" +
+                    "   用户会期的平均时间长度。 " +
+                    "</p>" +
+                    "<p>" +
+                    "   会期被定义为在登陆及登出。会期短与5秒不算在内。" +
+                    "</p>" +
+                    "<h5>" +
+                    "   公式:"+
+                    "</h5>" +
+                    "<p>" +
+                    "   <code>单一用户会期时间 = 用户会期总计会期时间/会期数量</code>" +
+                    "   <br/>" +
+                    "   <br/>" +
+                    "   <code>平均用户会期时间 ＝（所有单用户会期的时间总和）/用户总数</code>" +
+                    "</p>",
+            },
+            sdk_debug: {
+                header: "SDK调试视图 (SDK Debug)",
+                body: 
+                    "<h4>" + 
+                    "    目的和范围" + 
+                    "</h4>" + 
+                    "<p>" + 
+                    "    该SDK调试视图是一个方法给让iOS开发者，以验证它们是否正确实施YMC SDK。" + 
+                    "</p>" + 
+                    "<h4>" + 
+                    "    流程" + 
+                    "</h4>" + 
+                    "<p>" + 
+                    "    <ol>" + 
+                    "        <li>" + 
+                    "            根据文档，结合你的程式与 YMC SDK。" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            创建一个不是App Store的发布构建 - 如在Xcode中的iOS模拟器上运行你的应用程序" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            导航到您的应用程序的分析页面，登录并点击SDK Debug视图单项" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            执行应该会生成和发送SDK事件行动" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            点击刷新按钮来获取最近发送的分析事件" + 
+                    "        </li>" + 
+                    "        <li>" + 
+                    "            使用事件描述（例如<code>时间</code>，<code> IP地址</code> 等），以确定您的设备发送的事件。 该事件的详细信息可以点击按钮来进行验证阔展活动项目，并显示实际事件的JSON。" + 
+                    "        </li>" + 
+                    "    </ol>" + 
+                    "</p>" + 
+                    "<p>" + 
+                    "    如果您没有看到您的事件显示出来，请从头开始。" + 
+                    "</p>" + 
+                    "<h4>" + 
+                    "    自定事件" + 
+                    "</h4>" + 
+                    "<p>" + 
+                    "SDK Debug视图支持您创建自定义事件和自己发送，列如<code>level-up</code>，或<code>gain-collectable-05</code>。完成的JSON数据可以通过单击以展开项目进行查看。" + 
+                    "</p>" + 
+                    "<h4>" + 
+                    "    其他技术东西" + 
+                    "</h4>" + 
+                    "<p>" + 
+                    "   SDK调试视图会显示以下任何一条件发送YMC SDK分析事件：" + 
+                    "</p>" + 
+                    "<ul>" + 
+                    "    <li>" + 
+                    "        Xcode中运行iOS模拟器" + 
+                    "    </li>" + 
+                    "    <li>" + 
+                    "        开发版本从Xcode上载到设备插入运行Xcode的本机" + 
+                    "    </li>" + 
+                    "    <li>" + 
+                    "        iOS的特设构建 (Ad hoc)" + 
+                    "    </li>" + 
+                    "</ul>" + 
+                    "<p>" + 
+                    "    也就是说，只要不是苹果的App Store分布构建还是非iOS的构建。(没错 -- SDK的调试视图目前只支持iOS)." + 
+                    "</p>" + 
+                    "<p>" + 
+                    "    自动发送到Debug视图的事件，并不会有助于到我们的主要表现指标，如<i>活跃用户</ i>或<i> 用户平均收益／ARPU值</i>。" + 
+                    "</p>",
+            },
+            crash: {
+                header: "死机 (Crashes)",
+                body: 
+                    "<p>" +
+                    "   在任何设备上的死机次数。" +
+                    "</p>",
+            },
+            close_button: "关闭",
+        },
+        language: "语言",
+        english: "英文",
+        chinese: "中文",
+        timezone: "时区",
+        gmt: "GMT",
+        pacific: "太平洋 (PST/PDT)",
+        games: "所有游戏",
+        chart: "TRANSLATION_MISSING:  Chart",
+        gmt: "格林尼治标准时间 (GMT)",
+        pacific: "太平洋标准时间 (PST/PDT)",
+        collections: {
+            collection: 'TRANSLATION_MISSING: Collection',
+            events: 'TRANSLATION_MISSING: Live/Production Events',
+            sdk_debug: 'TRANSLATION_MISSING: SDK Debug Events',
+        },
+    },
+}

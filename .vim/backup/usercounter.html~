@@ -1,0 +1,24 @@
+{% load static %}
+{% get_static_prefix as STATIC_PREFIX %}
+<html>
+    <link href='http://fonts.googleapis.com/css?family=Maven+Pro' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="{{ STATIC_PREFIX }}css/usercounter.css" />
+
+    <link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.24/themes/ui-darkness/jquery-ui.css" rel="stylesheet">
+    <script type="text/javascript" src="{{ STATIC_PREFIX }}javascript/jquery-1.9.1.min.js"></script>
+    <script type="text/javascript" src="{{ STATIC_PREFIX }}javascript/jquery-ui-1.10.3.custom.min.js"></script>
+
+    <script type="text/javascript" src="{{ STATIC_PREFIX }}javascript/usercounter.js"></script>
+</html>
+
+<body class="usercounter-page">
+    <div class='usercounter-container'>
+        <h1>YMC Users To Date:</h1>
+        <span class="num-users">Many!</span>
+    </div>
+</body>
+
+<div id="dialog" title="Please enter the page password">
+    <input type="text" name="password">
+</div>
+

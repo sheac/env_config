@@ -1,0 +1,112 @@
+var t2c2t = require('./tier2currency2tier.js');
+var mongo = require('mongojs');
+var async = require('async');
+
+var addPacificTimeToCollection = function(collection, gameId, topCallback) {
+
+    var _id2usdMaps = [];
+
+    var errorHandler = function(err) {
+        if (typeof topCallback !== "undefined") {
+            topCallback(err);
+        } else {
+            throw err;
+        }
+    }
+
+    async.series({
+
+        populate_id2usd: function(callback) {
+
+            var queryHash = (gameId && typeof gameId !== "undefined") ?
+                                {event: "YA0charge", "properties.YA0token": gameId} :
+                                {event: "YA0charge"};
+                                
+            collection.find(queryHash).forEach(function(err, doc) {
+                if (err) { return errorHandler(err); }
+
+                if (!!doc) {
+                    var old_currency    = doc.properties.currency,
+                        amt         = doc.properties.amount;
+                    var tier = t2c2t.convertPriceToTier(amt, old_currency);
+                    var usd = !!tier ? t2c2t.convertTierToPrice(tier, new_currency) : null;
+                    _id2usdMaps.push({_id: doc._id, usd: usd});
+                } else {
+                    console.log("calling populate_id2usd callback");
+                    return callback();
+                }
+            });
+        },
+
+        addUsdInfoToAll: function(callback) {
+            async.each(_id2usdMaps, function(_id2usdMap, eachCallback){
+                var _id     = _id2usdMap['_id'],
+                    usd     = _id2usdMap['usd'];
+
+                var updateHash = !!usd ?
+                        {$set: {"properties.YA0USD": usd}} :
+                        {
+                            $set: {
+                                "properties.YA0USD": 0,
+                                event: "YA0charge_X"
+                            },
+                            $addToSet: {"properties.YA0error": "YA0USD"}
+                        };
+                                    
+                collection.findAndModify({
+                    query: {_id: _id},
+                    update: updateHash,
+                }, function(err, doc) {
+                    if (err) {return errorHandler(err); }
+                    eachCallback();
+                });
+            },
+            function(err){
+                if (err) { return errorHandler(err); }
+
+                console.log("calling addUsdInfoToAll callback");
+                callback();
+            });
+        },
+    },
+        
+    function(err) {
+        if (err) { return errorHandler(err); }
+
+        if (topCallback && typeof topCallback !== "undefined") {
+            topCallback();
+        }
+    });
+}
+
+
+if (require.main === module) {
+    var events = require('../../reporter/database.js').eventCollection;
+    var sdkDebug = require('../../reporter/database.js').sdkDebugCollection;
+
+    var callback1 = function() {
+        console.log("finished updating a collection");
+    }
+    var callback2 = function() {
+        console.log("finished updating a collection");
+        process.exit(0);
+    }
+
+    async.series({
+        addToEvents: function(callback) {
+            addPacificTimeToCollection(events, null, callback);
+        },
+        addToSdkDebug: function(callback) {
+            addPacificTimeToCollection(sdkDebug, null, callback);
+        },
+    },
+    function(err) {
+        if (err) { throw err; }
+
+        process.exit(0);
+    });
+
+} else {
+    exports.addPacificTimeToCollection = addPacificTimeToCollection;
+}
+
